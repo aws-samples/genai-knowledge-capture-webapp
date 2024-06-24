@@ -32,7 +32,6 @@ export class ReactAppBuild extends Construct {
     const reactEnvironmentVariables: Record<string, string> = {
       VITE_API_URL: props.apiUrl,
       VITE_API_KEY: props.apiKeyParameterName, // CodeBuild will inject the value from Parameter Store
-      VITE_TEST_AUDIO: "false",
     };
 
     // Deploy the React source code to S3
