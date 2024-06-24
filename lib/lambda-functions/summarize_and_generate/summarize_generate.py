@@ -27,13 +27,14 @@ class Request(BaseModel):
     documentName: str
     questionText: str
     documentText: str
+    audioFiles: list[str]
     serviceName: str = Connections.service_name
 
 
 @logger.inject_lambda_context(log_event=True, clear_state=True)
 @tracer.capture_lambda_handler
 @metrics.log_metrics(capture_cold_start_metric=True)
-def lambda_handler(event: Request, context: LambdaContext) -> str:
+def lambda_handler(event: Request, _context: LambdaContext) -> str:
     metrics.add_metric(
         name="TotalSummarizationInvocation", unit=MetricUnit.Count, value=1
     )
@@ -47,6 +48,7 @@ def lambda_handler(event: Request, context: LambdaContext) -> str:
     document_name = request.documentName
     document_text = request.documentText
     question = request.questionText
+    audio_files = request.audioFiles
 
     # Summarizing answers
     if document_text:
@@ -73,19 +75,26 @@ def lambda_handler(event: Request, context: LambdaContext) -> str:
         )
 
         # Generate Document
-        doc_response = generate_document(document_name, question, summary_text)
+        doc_response = generate_document(
+            document_name, question, summary_text, audio_files)
 
         statusCode: Literal[200] | Literal[400] = (
             200 if doc_response.statusCode == 200 else 400
         )
         pdfFileS3Uri: str = doc_response.pdfFileS3Uri
+        audioS3Uris: list[str] = doc_response.audioS3Uris
 
     else:
         logger.info("No valid answers retrieved for question")
         statusCode = 400
         pdfFileS3Uri = None
+        audioS3Uris = None
 
-    response_body = {"pdfFileS3Uri": pdfFileS3Uri, "documentName": document_name}
+    response_body = {
+        "pdfFileS3Uri": pdfFileS3Uri,
+        "audioS3Uris": audioS3Uris,
+        "documentName": document_name
+    }
 
     response = Response(
         statusCode=statusCode,

@@ -44,6 +44,17 @@ def parse_summary(summary):
 
 
 def generate_presigned_url(s3_client, bucket, key):
+    """
+    Generate a pre-signed URL for an S3 object.
+
+    Args:
+        s3_client (boto3.client): An S3 client instance.
+        bucket (str): The name of the S3 bucket.
+        key (str): The key (filename) of the S3 object.
+
+    Returns:
+        str: The pre-signed URL for the S3 object.
+    """
     url = s3_client.generate_presigned_url(
         ClientMethod="get_object",
         Params={"Bucket": bucket, "Key": key},

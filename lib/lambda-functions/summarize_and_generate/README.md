@@ -37,7 +37,8 @@ The primary objective of this AWS Lambda is to generate summary of multiple rele
 {
   "documentName": "test-live-knowledge-capture",
   "questionText": "What is Amazon SageMaker?",
-  "documentText": "**Amazon SageMaker** is a fully managed machine learning service that enables developers and data scientists to quickly build, train, and deploy machine learning models at scale."
+  "documentText": "**Amazon SageMaker** is a fully managed machine learning service that enables developers and data scientists to quickly build, train, and deploy machine learning models at scale.",
+  "audioFiles": ["base64string...", "..."]
 }
 ```
 
@@ -46,15 +47,17 @@ The primary objective of this AWS Lambda is to generate summary of multiple rele
 | `documentName` | User input document name                                       | String    |
 | `questionText` | User's question to be answered                                 | String    |
 | `documentText` | The answer to users question capture by Amazon Transcribe Live | String    |
+| `audioFiles  ` | The recorded audio clips as base64 encoded strings             | String[]  |
 
 #### Output
 
 ```json
 {
-  statusCode: int
-  pdfFileS3Uri: str
-  documentName: str
-  serviceName: 'genai-knowledge-capture-transcribe-live'
+  "statusCode": int,
+  "pdfFileS3Uri": str,
+  "audioS3Uris": str[],
+  "documentName": str,
+  "serviceName": "genai-knowledge-capture-transcribe-live"
 }
 ```
 
@@ -62,6 +65,7 @@ The primary objective of this AWS Lambda is to generate summary of multiple rele
 | -------------- | ---------------------------------------------------------------------------------------------------------------------- | --------- |
 | `statusCode`   | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully | Number    |
 | `pdfFileS3Uri` | S3 uri of the generated PDF file                                                                                       | String    |
+| `audioS3Uris`  | S3 uris of the saved audio files                                                                                       | String[]  |
 | `documentName` | User input document name                                                                                               | String    |
 | `serviceName`  | The name of the AWS Lambda as configured through AWS Powertools across log statements                                  | String    |
 
