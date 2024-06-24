@@ -1,0 +1,11 @@
+aws-lambda-powertools[tracer,parser]==2.35.1
+langchain==0.2.5
+langchain-community==0.2.5
+pandas==2.2.1
+defusedxml==0.7.1
+weasyprint==61.2
+markdown==3.6
+boto3>=1.34.69
+dominate==2.9.1
+pyarrow
+s3fs
