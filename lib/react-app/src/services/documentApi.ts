@@ -18,6 +18,7 @@ export interface DocumentApiPayload {
   documentName: string;
   questionText: string;
   documentText: string;
+  audioFiles: string[];
 }
 
 /**
@@ -28,6 +29,7 @@ export interface DocumentApiPayload {
  */
 export interface DocumentApiResponse {
   pdfFileS3Uri: string;
+  audioS3Uris: string[];
 }
 
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -41,8 +43,30 @@ const apiKeyValue = import.meta.env.VITE_API_KEY;
  * @returns {Promise<DocumentApiResponse | null>} - The API response, or `null` if the request failed.
  */
 export const callDocumentApi = async (
-  payload: DocumentApiPayload
+  filename: string,
+  question: string,
+  answer: string,
+  audioFiles: Blob[],
 ): Promise<DocumentApiResponse | null> => {
+  const base64Array: string[] = [];
+
+  // Convert each audio file Blob to a base64-encoded string
+  for (const audioFile of audioFiles) {
+    const base64 = await blobToBase64(audioFile);
+    base64Array.push(base64);
+  }
+
+  // Generate the API payload
+  const payload: DocumentApiPayload = {
+    documentName: filename.endsWith(".pdf")
+      ? filename.replace(".pdf", "")
+      : filename,
+    questionText: question,
+    documentText: answer,
+    audioFiles: base64Array,
+  };
+
+  // Call the API
   try {
     const response = await fetch(`${apiUrl}/summarize-and-generate`, {
       method: "POST",
@@ -64,3 +88,16 @@ export const callDocumentApi = async (
     return null;
   }
 };
+
+// Helper function to convert a Blob to a base64-encoded string
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.split(',')[1]);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(blob);
+  });
+}

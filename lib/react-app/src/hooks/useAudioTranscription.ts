@@ -36,11 +36,11 @@ type TranscriptionProperties = {
  * ]}
  *   - `isReady`: Indicates whether the audio transcription is ready to be used.
  *   - `isTranscribing`: Indicates whether the audio is currently being transcribed.
- *   - `transcriptionResult`: An object containing the current transcription result,
- *     including the text and a flag indicating if the transcription is partial or
  *     complete.
  *   - `startTranscription`: A function that starts the audio transcription process.
  *   - `stopTranscription`: A function that stops the audio transcription process.
+ *   - `transcribeResponse`: An object containing the current transcription result,
+ *     including the text and a flag indicating if the transcription is partial or
  *   - `resetTranscriptionResult`: A function to reset the `transcriptionResult` state
  *     after it is consumed.
  */
@@ -49,14 +49,14 @@ const useAudioTranscription = (
 ): [
   boolean,
   boolean,
+  () => Promise<void>,
+  () => Promise<void>,
   TranscriptionProperties | null,
-  () => Promise<void>,
-  () => Promise<void>,
   () => void
 ] => {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
-  const [transcriptionResult, setTranscriptionResult] =
+  const [transcribeResponse, setTranscribeResponse] =
     useState<TranscriptionProperties | null>(null);
   const { credentials } = useContext(AwsCredentialsContext);
 
@@ -89,13 +89,12 @@ const useAudioTranscription = (
       const command = createTranscriptionCommand(audioWorklet);
       const data = await transcribeClientRef.current.send(command);
       console.log("Transcribe session established ", data.SessionId);
-      resetTranscriptionResult();
       setIsTranscribing(true);
 
       if (data.TranscriptResultStream) {
         await processTranscriptStream(
           data.TranscriptResultStream,
-          setTranscriptionResult
+          setTranscribeResponse
         );
       }
     } catch (error) {
@@ -114,11 +113,11 @@ const useAudioTranscription = (
     }
 
     setIsTranscribing(false);
-    setTranscriptionResult(null);
+    resetTranscribeResponse();
   };
 
-  const resetTranscriptionResult = () => {
-    setTranscriptionResult({ text: "", partial: true });
+  const resetTranscribeResponse = () => {
+    setTranscribeResponse(null);
   };
 
   const createTranscribeClient = (credentials: CredentialProperties) => {
@@ -300,10 +299,10 @@ const useAudioTranscription = (
   return [
     isReady,
     isTranscribing,
-    transcriptionResult,
     startTranscription,
     stopTranscription,
-    resetTranscriptionResult,
+    transcribeResponse,
+    resetTranscribeResponse,
   ];
 };
 

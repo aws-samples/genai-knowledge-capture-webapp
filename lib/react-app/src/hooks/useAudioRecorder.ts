@@ -10,13 +10,21 @@ import { useState, useEffect, useRef, useCallback } from "react";
  * @returns {[boolean, boolean, Blob[], () => Promise<void>, () => Promise<void>]}
  *   - `isReady`: Indicates whether the audio recording is ready to be used.
  *   - `isRecording`: Indicates whether the audio is currently being recorded.
- *   - `audioBlobs`: An array of `Blob` objects containing the recorded audio data.
  *   - `startRecording`: A function that starts the audio recording process.
  *   - `stopRecording`: A function that stops the audio recording process.
+ *   - `audioBlobs`: An array of `Blob` objects containing the recorded audio data.
+ *   - `resetAudioBlobs`: A function to reset the `audioBlobs` state after it is consumed.
  */
 const useAudioRecorder = (
   audioStream: MediaStream | null
-): [boolean, boolean, Blob[], () => Promise<void>, () => Promise<void>] => {
+): [
+  boolean,
+  boolean,
+  () => Promise<void>,
+  () => Promise<void>,
+  Blob[],
+  () => void
+] => {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [audioBlobs, setAudioBlobs] = useState<Blob[]>([]);
@@ -44,9 +52,9 @@ const useAudioRecorder = (
       audioBlobs.push(event.data);
     };
 
-    mediaRecorder.start();
+    resetAudioBlobs();
     setIsRecording(true);
-    setAudioBlobs([]);
+    mediaRecorder.start();
     console.log("Audio recording started.");
   }, [audioStream]);
 
@@ -67,7 +75,18 @@ const useAudioRecorder = (
     console.log("Audio recording stopped.");
   }, []);
 
-  return [isReady, isRecording, audioBlobs, startRecording, stopRecording];
+  const resetAudioBlobs = () => {
+    setAudioBlobs([]);
+  };
+
+  return [
+    isReady,
+    isRecording,
+    startRecording,
+    stopRecording,
+    audioBlobs,
+    resetAudioBlobs,
+  ];
 };
 
 export default useAudioRecorder;
