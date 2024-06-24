@@ -5,7 +5,7 @@ import boto3
 sts_client = boto3.client("sts")
 
 
-def lambda_handler(event, context):
+def lambda_handler(_event, _context):
     role_arn = os.environ["ROLE_ARN"]
 
     try:
@@ -27,6 +27,7 @@ def lambda_handler(event, context):
                     "SecretAccessKey": credentials["SecretAccessKey"],
                     "SessionToken": credentials["SessionToken"],
                     "Expiration": credentials["Expiration"],
+                    "Region": os.environ["AWS_REGION"],
                 }
             ),
             "headers": {
