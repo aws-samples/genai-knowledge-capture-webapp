@@ -25,7 +25,7 @@ interface LambdaFunctionsProps {
 
 export class LambdaFunctions extends Construct {
   public readonly getCredentialsLambdaFunction: Function;
-  public readonly summarizeNGenerateFunction: Function;
+  public readonly orchestrationFunction: Function;
 
   constructor(scope: Construct, id: string, props: LambdaFunctionsProps) {
     super(scope, id);
@@ -46,14 +46,14 @@ export class LambdaFunctions extends Construct {
       transcribeRole
     );
 
-    // Create the Lambda execution role for the summarize-and-generate Lambda function
-    const summarizeNGenerateLambdaExecutionRole =
-      this.createSummarizeNGenerateLambdaExecutionRole(props.documentBucket);
+    // Create the Lambda execution role for the orchestration Lambda function
+    const orchestrationLambdaExecutionRole =
+      this.createOrchestrationLambdaExecutionRole(props.documentBucket);
 
-    // Create the summarize-and-generate Lambda function
-    this.summarizeNGenerateFunction =
-      this.createSummarizeNGenerateLambdaFunction(
-        summarizeNGenerateLambdaExecutionRole,
+    // Create the orchestration Lambda function
+    this.orchestrationFunction =
+      this.createOrchestrationLambdaFunction(
+        orchestrationLambdaExecutionRole,
         props.documentBucket
       );
   }
@@ -146,11 +146,11 @@ export class LambdaFunctions extends Construct {
     });
   }
 
-  private createSummarizeNGenerateLambdaExecutionRole(
+  private createOrchestrationLambdaExecutionRole(
     documentBucket: IBucket
   ): Role {
-    const role = new Role(this, "SummarizeNGenerateLambdaExecutionRole", {
-      roleName: "transcribe-summarize-and-generate-lambda-role",
+    const role = new Role(this, "OrchestrationLambdaExecutionRole", {
+      roleName: "transcribe-orchestration-lambda-role",
       assumedBy: new ServicePrincipal("lambda.amazonaws.com"),
       inlinePolicies: {
         LambdaExecutionPolicy: new PolicyDocument({
@@ -196,16 +196,16 @@ export class LambdaFunctions extends Construct {
     return role;
   }
 
-  private createSummarizeNGenerateLambdaFunction(
-    summarizeNGenerateLambdaExecutionRole: Role,
+  private createOrchestrationLambdaFunction(
+    orchestrationLambdaExecutionRole: Role,
     documentBucket: IBucket
   ): DockerImageFunction {
-    return new DockerImageFunction(this, "SummarizeNGenerateFunction", {
-      functionName: "transcribe-summarize-and-generate-function",
+    return new DockerImageFunction(this, "OrchestrationFunction", {
+      functionName: "transcribe-orchestration-function",
       code: DockerImageCode.fromImageAsset(
-        path.join(__dirname, "../lambda-functions/summarize_and_generate")
+        path.join(__dirname, "../lambda-functions/orchestration")
       ),
-      role: summarizeNGenerateLambdaExecutionRole,
+      role: orchestrationLambdaExecutionRole,
       architecture: Architecture.ARM_64,
       timeout: Duration.minutes(5),
       memorySize: 1024,
