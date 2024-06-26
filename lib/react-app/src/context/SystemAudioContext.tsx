@@ -1,5 +1,9 @@
 import React, { createContext, useEffect, useState } from "react";
 
+const audioSampleRate = 44100;  // Set the sample rate to 44.1 kHz
+const audioSampleBitSize = 16;  // Set the sample size to 16 bits
+const audioChannelCount = 1;    // Set the number of channels to 1 (mono)
+
 interface SystemAudioContextValue {
   audioStream: MediaStream | null;
 }
@@ -50,10 +54,17 @@ export const SystemAudioProvider: React.FC<SystemAudioProviderProps> = ({
 
   useEffect(() => {
     const getSystemAudio = async () => {
+
+      const audioConstraints = {
+        sampleRate: audioSampleRate,
+        sampleSize: audioSampleBitSize,
+        channelCount: audioChannelCount,
+      }
+
       try {
         const systemAudio = await window.navigator.mediaDevices.getUserMedia({
           video: false,
-          audio: true,
+          audio: audioConstraints,
         });
         setSystemAudio(systemAudio);
       } catch (error) {

@@ -9,8 +9,9 @@ import {
   CredentialProperties,
 } from "../context/AwsCredentialsContext";
 
-const sampleRate = 48000;
-const language = "en-US";
+const audioSampleRate = 48000;       // Set the sample rate to 48 kHz
+const audioEncodingType = "pcm";     // Set audio encoding type to PCM
+const transcribeLanguage = "en-US";  // Set the transcription language to English (US)
 
 type TranscriptionProperties = {
   text: string;
@@ -199,9 +200,9 @@ const useAudioTranscription = (
 
   const createTranscriptionCommand = (audioRecorder: AudioWorkletNode) => {
     return new StartStreamTranscriptionCommand({
-      LanguageCode: language,
-      MediaEncoding: "pcm",
-      MediaSampleRateHertz: sampleRate,
+      LanguageCode: transcribeLanguage,
+      MediaEncoding: audioEncodingType,
+      MediaSampleRateHertz: audioSampleRate,
       AudioStream: getAudioStreamGenerator(audioRecorder),
     });
   };

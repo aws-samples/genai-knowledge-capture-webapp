@@ -69,6 +69,9 @@ const TranscribeForm: React.FC = () => {
   // Handle Start Transcription / Stop Transcription button click
   const handleStartStop = async () => {
     if (!isTranscribing) {
+      // Clear links to previously created artifacts
+      setAudioLinks([]);
+      setDocumentLink(null);
       // Start recording and transcription
       await startRecording();
       await startTranscription();
