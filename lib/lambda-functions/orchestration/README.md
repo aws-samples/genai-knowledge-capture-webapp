@@ -1,4 +1,4 @@
-# Summarize and Generate Lambda
+# Orchestration Lambda
 
 ## Introduction
 

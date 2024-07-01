@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
+const audioMimeType = "audio/webm;codecs=opus";  // Set audio file type to "webm"
+const audioBitsPerSecond = 128000;               // Set audio kbps to 128
+
 /**
  * Defines a custom React hook called `useAudioRecorder` that provides a reusable way
  * to handle audio recording functionality in a React application.
@@ -44,7 +47,12 @@ const useAudioRecorder = (
   const startRecording = useCallback(async () => {
     if (!audioStream) return;
 
-    const mediaRecorder = new MediaRecorder(audioStream);
+    const mediaRecorderOptions: MediaRecorderOptions = {
+      mimeType: audioMimeType,
+      audioBitsPerSecond: audioBitsPerSecond,
+    };
+
+    const mediaRecorder = new MediaRecorder(audioStream, mediaRecorderOptions);
     mediaRecorderRef.current = mediaRecorder;
 
     const audioBlobs: Blob[] = [];

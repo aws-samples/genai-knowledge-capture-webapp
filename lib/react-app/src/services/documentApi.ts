@@ -7,12 +7,13 @@
  */
 
 /**
- * Represents the payload required to call the document summarization and generation API.
+ * Represents the payload required to call the orchestration API.
  *
  * @interface DocumentApiPayload
  * @property {string} documentName - The name of the document to be generated, without the ".pdf" extension.
  * @property {string} questionText - The text of the question or topic to be addressed in the document.
  * @property {string} documentText - The text content of the document to be summarized and generated.
+ * @property {string} audioFiles - The base64-encoded audio files to be stored in S3.
  */
 export interface DocumentApiPayload {
   documentName: string;
@@ -68,7 +69,7 @@ export const callDocumentApi = async (
 
   // Call the API
   try {
-    const response = await fetch(`${apiUrl}/summarize-and-generate`, {
+    const response = await fetch(`${apiUrl}/orchestration`, {
       method: "POST",
       headers: {
         "x-api-key": apiKeyValue,

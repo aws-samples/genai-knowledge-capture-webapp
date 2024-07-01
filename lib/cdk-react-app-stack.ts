@@ -36,7 +36,7 @@ export class CdkReactAppStack extends Stack {
     const api = new ApiGateway(this, "ApiGateway", {
       getCredentialsLambdaFunction:
         lambdaFunctions.getCredentialsLambdaFunction,
-      summarizeNGenerateFunction: lambdaFunctions.summarizeNGenerateFunction,
+      orchestrationFunction: lambdaFunctions.orchestrationFunction,
     });
 
     // Create the React app build

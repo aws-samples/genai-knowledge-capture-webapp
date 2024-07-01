@@ -21,7 +21,7 @@ import { NagSuppressions } from "cdk-nag";
 
 interface ApiGatewayProps {
   getCredentialsLambdaFunction: IFunction;
-  summarizeNGenerateFunction: IFunction;
+  orchestrationFunction: IFunction;
 }
 
 export class ApiGateway extends Construct {
@@ -51,12 +51,12 @@ export class ApiGateway extends Construct {
       props.getCredentialsLambdaFunction
     );
 
-    // Create the API's "summarize-and-generate" resource and method
-    const summarizeAndGenerateMethod = this.createResourceAndMethod(
+    // Create the API's "orchestration" resource and method
+    const orchestrationMethod = this.createResourceAndMethod(
       restApi,
-      "summarize-and-generate",
+      "orchestration",
       "POST",
-      props.summarizeNGenerateFunction
+      props.orchestrationFunction
     );
 
     // Store the API key in Parameter Store and associate it with the stage
@@ -66,10 +66,9 @@ export class ApiGateway extends Construct {
     // Create an usage plan and associate it with the API key and stage
     this.createUsagePlanAndAssociateWithApiKeyAndStage(
       restApi,
-      devStage,
       apiKey,
       getCredentialsMethod,
-      summarizeAndGenerateMethod
+      orchestrationMethod
     );
 
     this.apiUrl = restApi.url;
@@ -252,10 +251,9 @@ export class ApiGateway extends Construct {
 
   private createUsagePlanAndAssociateWithApiKeyAndStage(
     restApi: RestApi,
-    devStage: Stage,
     apiKey: any,
     getCredentialsMethod: Method,
-    summarizeAndGenerateMethod: Method
+    orchestrationMethod: Method
   ): void {
     const usagePlan = restApi.addUsagePlan("UsagePlan", {
       name: "Easy",
@@ -277,7 +275,7 @@ export class ApiGateway extends Construct {
           },
         },
         {
-          method: summarizeAndGenerateMethod,
+          method: orchestrationMethod,
           throttle: {
             rateLimit: 100,
             burstLimit: 200,

@@ -90,9 +90,9 @@ This diagram outlines a workflow for a voice-based application using AWS service
 
    - Once authorized, the voice input is processed by Amazon Transcribe Live, which converts the speech to text in real-time.
 
-5. **Summarize & Generate Lambda Function**:
+5. **Orchestration Lambda Function**:
 
-   - The transcribed text is then sent to another AWS Lambda function responsible for summarizing and generating content. This could involve processing the text for various purposes, such as creating summaries, generating responses, or performing further analysis.
+   - The transcribed text is then sent to another AWS Lambda function responsible for summarizing and generating content and storing the recorded audio files in S3. This could involve processing the text for various purposes, such as creating summaries, generating responses, or performing further analysis.
 
 6. **Amazon S3 Bucket**:
 
