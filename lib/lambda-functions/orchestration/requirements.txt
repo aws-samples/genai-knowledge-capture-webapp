@@ -1,6 +1,6 @@
 aws-lambda-powertools[tracer,parser]==2.35.1
 langchain==0.2.5
-langchain-community==0.2.5
+langchain-community==0.2.9
 defusedxml==0.7.1
 weasyprint==61.2
 markdown==3.6
