@@ -173,7 +173,7 @@ const TranscribeForm: React.FC = () => {
           stretch={true}
         >
           <Textarea
-            value={`${answer} ${partialTranscribeResponse}`.trim()}
+            value={`${answer}${partialTranscribeResponse ? " " : ""}${partialTranscribeResponse}`}
             autoComplete={false}
             onChange={(event) => handleManualAnswerChange(event.detail.value)}
             rows={10}
