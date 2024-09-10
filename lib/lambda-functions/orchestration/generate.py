@@ -43,6 +43,7 @@ def generate_document(
         html_body = render_html_body(document_title, document_text)
         html_content = generate_html(html_body)
         pdf_file_path = generate_pdf(html_content)
+        logger.debug(f"Generated PDF: {pdf_file_path}")
 
         session_id = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d_%H-%M-%S_%f")
         pdf_s3_url = upload_pdf_to_s3(session_id, pdf_file_path, document_name)
@@ -62,6 +63,7 @@ def generate_document(
 
 def generate_pdf(html_content: str) -> str:
     """Generate PDF from HTML content."""
+    logger.info(f"Generating PDF for html content {html_content}")
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
         # nosem: tempfile-without-flush
         temp_pdf_name = temp_pdf.name
@@ -76,6 +78,7 @@ def generate_pdf(html_content: str) -> str:
 
 def upload_pdf_to_s3(session_id: str, file_path: str, document_name: str) -> str:
     """Upload a file to S3 and return its S3 URL."""
+    logger.info(f"Uploading PDF to S3: {file_path}")
     bucket = Connections.s3_bucket_name
     key = f"{session_id}/{document_name}.pdf"
 
@@ -92,6 +95,7 @@ def upload_pdf_to_s3(session_id: str, file_path: str, document_name: str) -> str
 
 def upload_audio_to_s3(session_id: str, document_name: str, audio_files: list[str]) -> list[str]:
     """Upload a file to S3 and return its S3 URL."""
+    logger.info(f"Uploading audio to S3: {audio_files}")
     bucket = Connections.s3_bucket_name
     presigned_urls = []
     for index, audio_file in enumerate(audio_files):
