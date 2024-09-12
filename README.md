@@ -134,30 +134,10 @@ If you are a Windows platform, you would activate the virtualenv like this:
 Once the virtualenv is activated, you can install the required dependencies.
 
 ```bash
-$ pip install -r requirements.txt
+$ npm install
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-At this point you can now synthesize the CloudFormation template for this code.
-
-```bash
-$ cdk synth
-```
-
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-You will need to bootstrap it if this is your first time running cdk at a particular account and region.
-
-```
-$ cdk bootstrap
-```
-
-Once it's bootstrapped, you can proceed to deploy cdk.
+Once dependencies are installed, you can proceed to deploy cdk.
 
 ```
 $ cdk deploy
