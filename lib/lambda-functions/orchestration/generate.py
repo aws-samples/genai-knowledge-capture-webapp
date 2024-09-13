@@ -64,12 +64,14 @@ def generate_document(
 def generate_pdf(html_content: str) -> str:
     """Generate PDF from HTML content."""
     logger.info(f"Generating PDF for html content {html_content}")
+    import os
+    os.environ['FONTCONFIG_CACHE'] = '/tmp'
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
         # nosem: tempfile-without-flush
         temp_pdf_name = temp_pdf.name
         temp_pdf.write(html_content.encode('utf-8'))
-        temp_pdf.flush()  # Ensure all data is written to the file
-        temp_pdf.close()  # Close the file to ensure it's fully written and released
+        # temp_pdf.flush()  # Ensure all data is written to the file
+        # temp_pdf.close()  # Close the file to ensure it's fully written and released
 
     html_to_pdf(html_content, temp_pdf_name)
 
