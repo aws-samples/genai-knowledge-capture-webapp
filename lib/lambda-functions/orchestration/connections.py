@@ -1,7 +1,7 @@
 import os
 import boto3
 from aws_lambda_powertools import Logger, Tracer, Metrics
-from langchain_community.chat_models import BedrockChat
+from langchain_aws import ChatBedrock
 from botocore.client import Config
 
 tracer = Tracer()
@@ -102,8 +102,8 @@ class Connections:
             },
         }
 
-        return BedrockChat(
+        return ChatBedrock(
+            client=Connections.bedrock_runtime_client,
             model_id=MODEL_ID_MAPPING[model_name],
             model_kwargs=model_kwargs_mapping[model_name],
-            client=Connections.bedrock_runtime_client,
         )

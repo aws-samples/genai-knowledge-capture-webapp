@@ -207,13 +207,14 @@ export class LambdaFunctions extends Construct {
       ),
       role: orchestrationLambdaExecutionRole,
       architecture: Architecture.ARM_64,
-      timeout: Duration.minutes(5),
-      memorySize: 1024,
+      timeout: Duration.seconds(30),
+      memorySize: 2048,
       environment: {
         S3_BUCKET_NAME: documentBucket.bucketName,
         POWERTOOLS_LOG_LEVEL: "DEBUG",
         POWERTOOLS_METRICS_NAMESPACE: "knowledge-capture-dev",
         POWERTOOLS_SERVICE_NAME: "knowledge-capture-dev",
+        XDG_CACHE_HOME: "/tmp",   // Required for PDF font cache
       },
     });
   }
