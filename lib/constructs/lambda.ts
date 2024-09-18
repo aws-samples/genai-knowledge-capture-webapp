@@ -2,12 +2,13 @@ import * as path from "path";
 import { Aws, Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
+  Alias,
+  Architecture,
   Code,
-  Function,
-  Runtime,
   DockerImageCode,
   DockerImageFunction,
-  Architecture,
+  Function,
+  Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import {
   Effect,
@@ -200,7 +201,7 @@ export class LambdaFunctions extends Construct {
     orchestrationLambdaExecutionRole: Role,
     documentBucket: IBucket
   ): DockerImageFunction {
-    return new DockerImageFunction(this, "OrchestrationFunction", {
+    const orchestrationFunction = new DockerImageFunction(this, "OrchestrationFunction", {
       functionName: "transcribe-orchestration-function",
       code: DockerImageCode.fromImageAsset(
         path.join(__dirname, "../lambda-functions/orchestration")
@@ -208,7 +209,7 @@ export class LambdaFunctions extends Construct {
       role: orchestrationLambdaExecutionRole,
       architecture: Architecture.ARM_64,
       timeout: Duration.seconds(30),
-      memorySize: 2048,
+      memorySize: 1024,
       environment: {
         S3_BUCKET_NAME: documentBucket.bucketName,
         POWERTOOLS_LOG_LEVEL: "DEBUG",
@@ -217,5 +218,11 @@ export class LambdaFunctions extends Construct {
         XDG_CACHE_HOME: "/tmp",   // Required for PDF font cache
       },
     });
+    new Alias(this, 'LambdaAlias', {
+      aliasName: 'OrchestrationLambdaAlias',
+      version: orchestrationFunction.currentVersion,
+      provisionedConcurrentExecutions: 1,
+    })
+    return orchestrationFunction;
   }
 }
