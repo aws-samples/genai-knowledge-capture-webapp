@@ -1,6 +1,6 @@
-aws-lambda-powertools[tracer,parser]==2.35.1
-langchain==0.2.12
-langchain-aws==0.1.13
+aws-lambda-powertools[tracer,parser]==3.2.0
+langchain==0.3.0
+langchain-aws==0.2.6
 langchain-community==0.3.0
 defusedxml==0.7.1
 weasyprint==62.3
