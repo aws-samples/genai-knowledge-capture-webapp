@@ -1,4 +1,4 @@
-import { CfnOutput, Stack } from "aws-cdk-lib";
+import { CfnOutput, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
   AuthorizationType,
@@ -36,6 +36,7 @@ export class ApiGateway extends Construct {
 
     // Create the WebACL
     const restApiACL = this.createWebACL();
+    restApiACL.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     // Create the API's deployment and stage
     const devStage = this.createDeploymentAndStage(restApi);
@@ -137,7 +138,6 @@ export class ApiGateway extends Construct {
         metricName: "MetricForWebACL",
         sampledRequestsEnabled: true,
       },
-      name: "RestApiACL",
       rules: [
         {
           name: "CRSRule",
