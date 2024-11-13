@@ -1,5 +1,5 @@
 import { Construct } from "constructs";
-import { Aws, CfnOutput, Duration } from "aws-cdk-lib";
+import { Aws, CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import {
   CloudFrontWebDistribution,
@@ -23,6 +23,7 @@ export class ReactAppDeploy extends Construct {
 
     // Create the CloudFront web application firewall (WAF)
     const cloudfrontACL = this.createCloudFrontWaf();
+    cloudfrontACL.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     // Create the CloudFront distribution
     const cloudFrontDistribution = this.createCloudFrontDistribution(
@@ -54,7 +55,6 @@ export class ReactAppDeploy extends Construct {
         metricName: "MetricForWebACL",
         sampledRequestsEnabled: true,
       },
-      name: "CloudfrontACL",
       rules: [
         {
           name: "CRSRule",
