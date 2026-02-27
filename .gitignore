@@ -366,3 +366,4 @@ cdk.out
 
 !jest.config.js
 node_modules
+cdk.out/*

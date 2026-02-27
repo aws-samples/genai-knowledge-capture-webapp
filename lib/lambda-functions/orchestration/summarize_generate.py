@@ -57,7 +57,7 @@ def lambda_handler(event: Request, _context: LambdaContext) -> str:
 
         # Calling LLM to summarize the answers for the given question
         summary_text = summarization(
-            question, [document_text], model_name="Claude3Haiku"
+            question, [document_text], model_name="ClaudeHaiku4_5"
         )
         logger.debug(f"Summarized answer: \n {summary_text}")
 

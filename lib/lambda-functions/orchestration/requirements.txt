@@ -1,11 +1,10 @@
-aws-lambda-powertools[tracer,parser]==3.2.0
-langchain==0.3.27
-langchain-aws==0.2.6
-langchain-community==0.3.27
+aws-lambda-powertools[tracer,parser]==3.24.0
+langchain==1.2.10
+langchain-aws==1.3.1
 defusedxml==0.7.1
-weasyprint==62.3
+weasyprint==68.1
 markdown==3.6
-boto3>=1.34.69
+boto3>=1.35.0
 dominate==2.9.1
 pyarrow
 s3fs

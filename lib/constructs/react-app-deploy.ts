@@ -2,11 +2,13 @@ import { Construct } from "constructs";
 import { Aws, CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import {
-  CloudFrontWebDistribution,
+  Distribution,
   GeoRestriction,
-  CfnOriginAccessControl,
-  CfnDistribution,
+  ViewerProtocolPolicy,
+  CachePolicy,
+  OriginRequestPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
+import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { PolicyStatement, Effect, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { CfnWebACL } from "aws-cdk-lib/aws-wafv2";
 import { Key } from "aws-cdk-lib/aws-kms";
@@ -25,23 +27,20 @@ export class ReactAppDeploy extends Construct {
     const cloudfrontACL = this.createCloudFrontWaf();
     cloudfrontACL.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
-    // Create the CloudFront distribution
-    const cloudFrontDistribution = this.createCloudFrontDistribution(
+    // Create the CloudFront distribution with native OAC
+    const distribution = this.createCloudFrontDistribution(
       props.reactAppBucket,
       cloudfrontACL
     );
 
-    // Add the CloudFront Origin Access Control (OAC)
-    this.addCloudFrontOriginAccessControl(cloudFrontDistribution);
-
     // Update the KMS key policy to allow use by CloudFront distribution
-    this.updateKmsKeyPolicy(props.kmsKey, cloudFrontDistribution);
+    this.updateKmsKeyPolicy(props.kmsKey, distribution);
 
     // Update the S3 bucket policy to allow access to CloudFront distribution
-    this.updateS3BucketPolicy(props.reactAppBucket, cloudFrontDistribution);
+    this.updateS3BucketPolicy(props.reactAppBucket, distribution);
 
     // Create the CloudFormation output for the CloudFront URL
-    this.createCloudFrontDistributionOutput(cloudFrontDistribution);
+    this.createCloudFrontDistributionOutput(distribution);
   }
 
   private createCloudFrontWaf(): CfnWebACL {
@@ -81,55 +80,34 @@ export class ReactAppDeploy extends Construct {
   private createCloudFrontDistribution(
     reactAppBucket: IBucket,
     cloudfrontACL: CfnWebACL
-  ): CloudFrontWebDistribution {
-    const distribution = new CloudFrontWebDistribution(
-      this,
-      "CloudFrontDistribution",
-      {
-        originConfigs: [
-          {
-            s3OriginSource: {
-              s3BucketSource: reactAppBucket,
-              originPath: "/dist",
-            },
-            behaviors: [
-              {
-                isDefaultBehavior: true,
-                minTtl: Duration.seconds(0),
-                defaultTtl: Duration.seconds(120),
-                maxTtl: Duration.seconds(300),
-                forwardedValues: {
-                  queryString: false,
-                  cookies: {
-                    forward: "none",
-                  },
-                  headers: [
-                    "Origin",
-                    "Access-Control-Request-Headers",
-                    "Access-Control-Request-Method",
-                    "Cache-Control",
-                  ],
-                },
-              },
-            ],
-          },
-        ],
-        errorConfigurations: [
-          {
-            errorCode: 404,
-            errorCachingMinTtl: 0,
-            responseCode: 200,
-            responsePagePath: "/",
-          },
-        ],
-        loggingConfig: {
-          bucket: reactAppBucket,
-          prefix: "access-logs/",
+  ): Distribution {
+    const distribution = new Distribution(this, "CloudFrontDistribution", {
+      defaultBehavior: {
+        origin: S3BucketOrigin.withOriginAccessControl(reactAppBucket, {
+          originPath: "/dist",
+        }),
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: new CachePolicy(this, "CachePolicy", {
+          minTtl: Duration.seconds(0),
+          defaultTtl: Duration.seconds(120),
+          maxTtl: Duration.seconds(300),
+        }),
+        originRequestPolicy: OriginRequestPolicy.CORS_S3_ORIGIN,
+      },
+      errorResponses: [
+        {
+          httpStatus: 404,
+          ttl: Duration.seconds(0),
+          responseHttpStatus: 200,
+          responsePagePath: "/",
         },
-        webACLId: cloudfrontACL.attrArn,
-        geoRestriction: GeoRestriction.allowlist("US", "CA"),
-      }
-    );
+      ],
+      logBucket: reactAppBucket,
+      logFilePrefix: "access-logs/",
+      webAclId: cloudfrontACL.attrArn,
+      geoRestriction: GeoRestriction.allowlist("US", "CA"),
+      defaultRootObject: "index.html",
+    });
 
     NagSuppressions.addResourceSuppressions(distribution, [
       {
@@ -141,28 +119,9 @@ export class ReactAppDeploy extends Construct {
     return distribution;
   }
 
-  private addCloudFrontOriginAccessControl(
-    cloudFrontDistribution: CloudFrontWebDistribution
-  ): void {
-    const oac = new CfnOriginAccessControl(this, "OriginAccessControl", {
-      originAccessControlConfig: {
-        name: "transcribe-oac",
-        originAccessControlOriginType: "s3",
-        signingBehavior: "always",
-        signingProtocol: "sigv4",
-      },
-    });
-    const cfnDistribution = cloudFrontDistribution.node
-      .defaultChild as CfnDistribution;
-    cfnDistribution.addPropertyOverride(
-      "DistributionConfig.Origins.0.OriginAccessControlId",
-      oac.getAtt("Id")
-    );
-  }
-
   private updateKmsKeyPolicy(
     kmsKey: Key,
-    cloudFrontDistribution: CloudFrontWebDistribution
+    distribution: Distribution
   ): void {
     kmsKey.addToResourcePolicy(
       new PolicyStatement({
@@ -172,7 +131,7 @@ export class ReactAppDeploy extends Construct {
         resources: ["*"],
         conditions: {
           StringEquals: {
-            "aws:SourceArn": `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/${cloudFrontDistribution.distributionId}`,
+            "aws:SourceArn": `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/${distribution.distributionId}`,
           },
         },
       })
@@ -181,7 +140,7 @@ export class ReactAppDeploy extends Construct {
 
   private updateS3BucketPolicy(
     reactAppBucket: IBucket,
-    cloudFrontDistribution: CloudFrontWebDistribution
+    distribution: Distribution
   ): void {
     const bucketPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
@@ -190,7 +149,7 @@ export class ReactAppDeploy extends Construct {
       resources: [`${reactAppBucket.bucketArn}/*`],
       conditions: {
         StringEquals: {
-          "AWS:SourceArn": `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/${cloudFrontDistribution.distributionId}`,
+          "AWS:SourceArn": `arn:aws:cloudfront::${Aws.ACCOUNT_ID}:distribution/${distribution.distributionId}`,
         },
       },
     });
@@ -198,11 +157,11 @@ export class ReactAppDeploy extends Construct {
   }
 
   private createCloudFrontDistributionOutput(
-    cloudFrontDistribution: CloudFrontWebDistribution
+    distribution: Distribution
   ): void {
     new CfnOutput(this, "CloudFrontDistributionUrl", {
       key: "ReactAppUrl",
-      value: `https://${cloudFrontDistribution.distributionDomainName}`,
+      value: `https://${distribution.distributionDomainName}`,
       description: "The CloudFront URL for the React App",
     });
   }

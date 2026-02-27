@@ -8,7 +8,7 @@ SYSTEM_PROMPT = """
 SUMMARIZATION_TEMPLATE_PARAGRAPH = """
     Here is the list of input texts:
 
-    </input_texts>
+    <input_texts>
     {input_texts}
     </input_texts>
 

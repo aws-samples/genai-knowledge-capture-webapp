@@ -2,7 +2,6 @@ import * as path from "path";
 import { Aws, Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
-  Alias,
   Architecture,
   Code,
   DockerImageCode,
@@ -133,7 +132,7 @@ export class LambdaFunctions extends Construct {
   ): Function {
     return new Function(this, "GetCredentialsLambdaFunction", {
       functionName: "transcribe-get-credentials-function",
-      runtime: Runtime.PYTHON_3_12,
+      runtime: Runtime.PYTHON_3_13,
       code: Code.fromAsset(
         path.join(__dirname, "../lambda-functions/get_credentials")
       ),
@@ -179,8 +178,12 @@ export class LambdaFunctions extends Construct {
             }),
             new PolicyStatement({
               effect: Effect.ALLOW,
-              actions: ["bedrock:*"],
-              resources: [`arn:aws:bedrock:${Aws.REGION}::foundation-model/*`],
+              actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+              resources: [
+                `arn:aws:bedrock:*::foundation-model/*`,
+                `arn:aws:bedrock:*:${Aws.ACCOUNT_ID}:inference-profile/*`,
+                `arn:aws:bedrock:us:${Aws.ACCOUNT_ID}:inference-profile/*`,
+              ],
             }),
           ],
         }),
@@ -208,7 +211,7 @@ export class LambdaFunctions extends Construct {
       ),
       role: orchestrationLambdaExecutionRole,
       architecture: Architecture.ARM_64,
-      timeout: Duration.seconds(30),
+      timeout: Duration.seconds(60),
       memorySize: 1024,
       environment: {
         S3_BUCKET_NAME: documentBucket.bucketName,
@@ -218,11 +221,6 @@ export class LambdaFunctions extends Construct {
         XDG_CACHE_HOME: "/tmp",   // Required for PDF font cache
       },
     });
-    new Alias(this, 'LambdaAlias', {
-      aliasName: 'OrchestrationLambdaAlias',
-      version: orchestrationFunction.currentVersion,
-      provisionedConcurrentExecutions: 1,
-    })
     return orchestrationFunction;
   }
 }

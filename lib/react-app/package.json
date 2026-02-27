@@ -10,23 +10,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-transcribe-streaming": "^3.529.0",
-    "@cloudscape-design/components": "^3.0.662",
-    "@cloudscape-design/global-styles": "^1.0.27",
-    "fast-xml-parser": "^4.4.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@aws-sdk/client-transcribe-streaming": "^3.750.0",
+    "@cloudscape-design/components": "^3.0.900",
+    "@cloudscape-design/global-styles": "^1.0.32",
+    "fast-xml-parser": "^5.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@typescript-eslint/eslint-plugin": "^8.24.0",
+    "@typescript-eslint/parser": "^8.24.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^8.57.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.6",
-    "typescript": "^5.2.2",
+    "eslint": "^9.20.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "typescript": "^5.7.3",
     "vite": "^6.4.1"
   }
 }

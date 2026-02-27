@@ -1,34 +1,9 @@
 from connections import logger
 
 
-def format_inputs(input_texts):
-    """
-    To format a list of input texts into the format that fit into the prompt for Claude models
-
-    Args:
-        input_texts: a list of input_texts
-
-    Returns:
-        a str
-
-    """
-
-    input_text_list = []
-    for (
-        i,
-        text,
-    ) in enumerate(input_texts):
-        prefix = f"<input_text_{i + 1}>"
-        suffix = f"</input_text_{i + 1}>"
-        input_text = prefix + text + suffix + "\n\n"
-        input_text_list.append(input_text)
-
-    return " ".join(input_text_list)
-
-
 def parse_summary(summary):
     """
-    Parse the output summary from XMLParser
+    Parse the output summary from XMLParser.
 
     Args:
         summary: a JSON file from XMLParser output
