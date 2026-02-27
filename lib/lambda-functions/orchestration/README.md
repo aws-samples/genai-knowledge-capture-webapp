@@ -1,80 +1,96 @@
 # Orchestration Lambda
 
-## Introduction
+## Overview
 
-The primary objective of this AWS Lambda is to generate summary of multiple relevant answers received for a given question. This AWS Lambda uses Large Language Models from Amazon Bedrock service to generate the summary.
+Docker-based AWS Lambda function that summarizes transcribed text using Amazon Bedrock (Claude 4.5/4.6) and generates styled PDF documents. The function receives transcribed text and audio recordings, invokes an LLM for summarization via LangChain, renders the summary as a PDF using WeasyPrint, and uploads all artifacts to S3 with pre-signed download URLs.
 
-## Component Details
+## Technology Stack
 
-#### Prerequisites
+| Technology | Version | Purpose |
+|-----------|---------|---------|
+| Python | 3.13 | Runtime |
+| AWS Lambda Powertools | 3.24.0 | Structured logging, tracing, metrics |
+| LangChain | 1.2.10 | LLM orchestration and prompt chaining |
+| LangChain AWS | 1.3.1 | Amazon Bedrock integration for LangChain |
+| WeasyPrint | 68.1 | HTML-to-PDF rendering |
+| Markdown | 3.6 | Markdown-to-HTML conversion |
+| Dominate | 2.9.1 | HTML document generation |
+| Boto3 | 1.35+ | AWS SDK |
 
-- [Python 3.12](https://www.python.org/downloads/release/python-3120/) or later
-- [AWS Lambda Powertools 2.35.1](https://docs.powertools.aws.dev/lambda/python/2.35.1/)
+## AI Models
 
-#### Technology stack
+Uses Amazon Bedrock cross-region inference profiles:
 
-- [AWS Lambda](https://aws.amazon.com/lambda/)
-- [Amazon Bedrock](https://aws.amazon.com/bedrock/)
-- [Amazon S3](https://aws.amazon.com/s3/)
+| Model | Inference Profile ID | Use Case |
+|-------|---------------------|----------|
+| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Default — fast summarization |
+| Claude Sonnet 4.6 | `us.anthropic.claude-sonnet-4-6` | High-quality summarization |
+| Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` | Complex analysis (available) |
 
-#### Package Details
+## File Reference
 
-| Files                                          | Description                                                                                                |
-| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [connections.py](connections.py)               | Python file with `Connections` class for establishing connections with external dependencies of the lambda |
-| [exceptions.py](exceptions.py)                 | Python file containing custom exception classes `CodeError` and `ConnectionError`                          |
-| [document_generator.py](document_generator.py) | Python file containing the helper functions that convert HTML to PDF files                                 |
-| [generate.py](generate.py)                     | Python file containing the helper functions that generate PDF files and upload them to S3 bucket           |
-| [prompt_templates.py](prompt_templates.py)     | Python variables with input Prompts for the LLM to operate                                                 |
-| [summarization.py](summarization.py)           | Python utility class for performing answer summary using Amazon Bedrock service                            |
-| [summarize_generate.py](summarize_generate.py) | Python file containing `lambda_handler`                                                                    |
-| [utils.py](utils.py)                           | Python utility file containing reusable methods                                                            |
-| [requirements.txt](requirements.txt)           | A text file containing all dependencies for this lambda                                                    |
+| File | Description |
+|------|-------------|
+| [summarize_generate.py](summarize_generate.py) | Lambda handler — orchestrates summarization and document generation |
+| [summarization.py](summarization.py) | LangChain chain: prompt → LLM → XML parser for summarization |
+| [connections.py](connections.py) | Bedrock and S3 client connections, model configuration |
+| [prompt_templates.py](prompt_templates.py) | System and human prompt templates for the LLM |
+| [generate.py](generate.py) | PDF generation and S3 upload logic |
+| [document_generator.py](document_generator.py) | HTML rendering and WeasyPrint PDF conversion |
+| [utils.py](utils.py) | Utility functions (XML parsing, S3 pre-signed URLs) |
+| [exceptions.py](exceptions.py) | Custom exception classes |
+| [requirements.txt](requirements.txt) | Python dependencies |
+| [Dockerfile](Dockerfile) | Container image definition (based on `public.ecr.aws/lambda/python:3.13`) |
 
-#### Input
+## Input
 
 ```json
 {
   "documentName": "test-live-knowledge-capture",
   "questionText": "What is Amazon SageMaker?",
-  "documentText": "**Amazon SageMaker** is a fully managed machine learning service that enables developers and data scientists to quickly build, train, and deploy machine learning models at scale.",
+  "documentText": "Amazon SageMaker is a fully managed machine learning service...",
   "audioFiles": ["base64string...", "..."]
 }
 ```
 
-| Field          | Description                                                    | Data Type |
-| -------------- | -------------------------------------------------------------- | --------- |
-| `documentName` | User input document name                                       | String    |
-| `questionText` | User's question to be answered                                 | String    |
-| `documentText` | The answer to users question capture by Amazon Transcribe Live | String    |
-| `audioFiles  ` | The recorded audio clips as base64 encoded strings             | String[]  |
+| Field | Type | Description |
+|-------|------|-------------|
+| `documentName` | String | User-provided document name |
+| `questionText` | String | The question being answered |
+| `documentText` | String | Transcribed answer text from Amazon Transcribe |
+| `audioFiles` | String[] | Base64-encoded audio recordings |
 
-#### Output
+## Output
 
 ```json
 {
-  "statusCode": int,
-  "pdfFileS3Uri": str,
-  "audioS3Uris": str[],
-  "documentName": str,
-  "serviceName": "genai-knowledge-capture-transcribe-live"
+  "statusCode": 200,
+  "body": "{\"pdfFileS3Uri\": \"https://...\", \"audioS3Uris\": [\"https://...\"], \"documentName\": \"...\"}"
 }
 ```
 
-| Field          | Description                                                                                                            | Data Type |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------- | --------- |
-| `statusCode`   | A HTTP status code that denotes the output status of validation. A `200` value means validation completed successfully | Number    |
-| `pdfFileS3Uri` | S3 uri of the generated PDF file                                                                                       | String    |
-| `audioS3Uris`  | S3 uris of the saved audio files                                                                                       | String[]  |
-| `documentName` | User input document name                                                                                               | String    |
-| `serviceName`  | The name of the AWS Lambda as configured through AWS Powertools across log statements                                  | String    |
+| Field | Type | Description |
+|-------|------|-------------|
+| `statusCode` | Number | HTTP status code (200 = success, 400 = error) |
+| `pdfFileS3Uri` | String | Pre-signed S3 URL for the generated PDF |
+| `audioS3Uris` | String[] | Pre-signed S3 URLs for saved audio files |
+| `documentName` | String | Echo of the input document name |
 
-#### Environmental Variables
+## Environment Variables
 
-| Field                          | Description                                                     | Data Type |
-| ------------------------------ | --------------------------------------------------------------- | --------- |
-| `POWERTOOLS_LOG_LEVEL`         | Sets how verbose Logger should be (INFO, by default)            | String    |
-| `DATA_SOURCE_BUCKET_NAME`      | S3 bucket where the final PDF file is stored                    | String    |
-| `POWERTOOLS_SERVICE_NAME`      | Sets service key that will be present across all log statements | String    |
-| `POWERTOOLS_METRICS_NAMESPACE` | Sets namespace key that will be present across metrics log      | String    |
-| `AWS_REGION`                   | AWS Region where the solution is deployed                       | String    |
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET_NAME` | S3 bucket for storing generated documents and audio |
+| `POWERTOOLS_LOG_LEVEL` | Logger verbosity (DEBUG, INFO, WARNING, ERROR) |
+| `POWERTOOLS_SERVICE_NAME` | Service name for structured logging |
+| `POWERTOOLS_METRICS_NAMESPACE` | CloudWatch metrics namespace |
+| `AWS_REGION` | AWS Region (set automatically by Lambda) |
+| `XDG_CACHE_HOME` | Set to `/tmp` for WeasyPrint font cache |
+
+## Docker Build
+
+The Lambda runs as a Docker container image based on `public.ecr.aws/lambda/python:3.13`. The image includes the `pango` system library required by WeasyPrint for PDF rendering. CDK builds the image automatically via `DockerImageCode.fromImageAsset()`.
+
+## License
+
+This project is licensed under the MIT-0 License.

@@ -1,30 +1,79 @@
-# React + TypeScript + Vite
+# React Frontend — Knowledge Capture UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Browser-based voice transcription and document generation interface built with React, Vite, and AWS Cloudscape Design Components.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+| Technology | Version | Purpose |
+|-----------|---------|---------|
+| React | 18.3 | UI framework |
+| Vite | 6.4 | Build tool and dev server |
+| TypeScript | 5.7 | Type safety |
+| Cloudscape Design Components | 3.x | AWS-native UI component library |
+| AWS SDK (Transcribe Streaming) | 3.750+ | Real-time speech-to-text via WebSocket |
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+```
+src/
+├── App.tsx                        # Root component with Cloudscape theming
+├── main.tsx                       # React entry point
+├── components/
+│   ├── TranscribeForm.tsx         # Main form: transcription, editing, document generation
+│   └── AudioPlayer.tsx            # Playback component for recorded audio clips
+├── context/
+│   ├── AwsCredentialsContext.tsx   # Fetches temporary STS credentials from API
+│   └── SystemAudioContext.tsx      # Audio device and AudioWorklet management
+├── hooks/
+│   ├── useAudioTranscription.ts   # Amazon Transcribe streaming WebSocket hook
+│   ├── useAudioRecorder.ts        # MediaRecorder hook for audio capture
+│   └── useAudioProcessing.ts      # AudioWorklet processing hook
+├── services/
+│   └── documentApi.ts             # API client for orchestration endpoint
+└── assets/
+    └── favicon.ico
+public/
+└── worklets/
+    └── audio-processor.js         # AudioWorklet processor for real-time audio
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+## Environment Variables
+
+The app uses Vite environment variables (prefixed with `VITE_`), injected at build time by CodeBuild:
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | API Gateway endpoint URL |
+| `VITE_API_KEY` | API key for authenticating requests |
+
+See `.env.template` for the expected format.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Lint
+npm run lint
+```
+
+## Build & Deployment
+
+The React app is built and deployed automatically:
+
+1. CDK deploys the source code to S3 via `BucketDeployment`
+2. An EventBridge rule triggers a CodeBuild project on stack create/update
+3. CodeBuild runs `npm ci && npm run build`, injecting environment variables from SSM Parameter Store
+4. Built artifacts are output to the `dist/` prefix in the S3 bucket
+5. CloudFront serves the built app from S3 with Origin Access Control (OAC)
+
+## License
+
+This project is licensed under the MIT-0 License.

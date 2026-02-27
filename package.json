@@ -8,7 +8,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "postinstall": "cd node_modules/aws-cdk-lib/node_modules/minimatch && npm install minimatch@10.2.4 --install-strategy=shallow --no-save 2>/dev/null; cp -f node_modules/minimatch/* . 2>/dev/null; rm -rf node_modules; true"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -27,5 +28,8 @@
     "constructs": "^10.4.2",
     "source-map-support": "^0.5.21",
     "uuid": "^11.1.0"
+  },
+  "overrides": {
+    "minimatch": "10.2.4"
   }
 }

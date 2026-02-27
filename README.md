@@ -1,171 +1,155 @@
-# Knowledge Capture using Live Transcribe and GenerativeAI
+# Knowledge Capture using Live Transcribe and Generative AI
 
-Welcome to the Knowledge Capture Solution using Live Transcribe and GenerativeAI! This project provides a comprehensive system for real-time voice transcription, text analysis, anomaly detection, and professional document summarization. Below is an overview of the main features and functionalities of the solution:
+A real-time voice transcription and document generation solution powered by AWS services and Anthropic Claude models on Amazon Bedrock. Users speak into the browser, the audio is transcribed live, and the text is summarized into a professional PDF document using generative AI.
 
 ## Features
 
-### 1. Real-Time Voice Transcription
+- **Real-Time Voice Transcription** — Browser-based audio capture streamed to Amazon Transcribe for live speech-to-text conversion. Users can review and edit transcriptions before submission.
+- **AI-Powered Summarization** — Transcribed text is summarized into professional documents using Claude 4.5/4.6 models on Amazon Bedrock via LangChain.
+- **PDF Document Generation** — Summaries are rendered as styled PDF documents using WeasyPrint and uploaded to S3 with pre-signed download URLs.
+- **Audio Recording Storage** — Original audio recordings are saved alongside generated documents in S3.
 
-Our solution offers real-time voice transcription that allows users to review and edit transcriptions to ensure accuracy. The system ensures that user inputs pertain to a single topic, enhancing the quality and relevance of the transcriptions.
-
-- **Real-Time Transcription:** Transcribe voice inputs in real-time.
-- **User Review and Edit:** Users can review and edit the transcriptions to ensure accuracy.
-- **Single Topic Focus:** User inputs are expected to focus on a single topic to maintain coherence.
-
-### 2. Professional Document Summarization
-
-Once the transcribed texts are edited and confirmed to be on the same topic, the solution summarizes the set of texts into a professional document ready for review.
-
-- **Text Summarization:** Summarize edited and validated transcriptions into a coherent document.
-- **Professional Quality:** Ensure the document is professionally formatted and ready for review.
-
-## Getting Started
-
-To get started with this project, clone the repository and follow the installation instructions in the README file. The solution is designed to be user-friendly and integrates seamlessly with your existing workflows.
-
-We hope this project helps streamline your voice transcription and document creation processes, ensuring accuracy and efficiency every step of the way.
-
-## Table of Contents
-
-- [Knowledge Capture using Live Transcribe and GenerativeAI](#knowledge-capture-using-live-transcribe-and-generativeai)
-  - [Features](#features)
-    - [1. Real-Time Voice Transcription](#1-real-time-voice-transcription)
-    - [2. Professional Document Summarization](#2-professional-document-summarization)
-  - [Getting Started](#getting-started)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Target technology stack](#target-technology-stack)
-  - [Solution Overview](#solution-overview)
-  - [Solution Architecture](#solution-architecture)
-  - [Deployment](#deployment)
-  - [Useful CDK commands](#useful-cdk-commands)
-  - [Authors and acknowledgment](#authors-and-acknowledgment)
-
-## Prerequisites
-
-- Docker
-- AWS CDK Toolkit 2.114.1+, installed installed and configured. For more information, see Getting started with the AWS CDK in the AWS CDK documentation.
-- Python 3.12+, installed and configured. For more information, see Beginners Guide/Download in the Python documentation.
-- An active AWS account
-- An AWS account bootstrapped by using AWS CDK in us-east-1 or us-west-2. Enable Claude model access in Bedrock service.
-- An AWS IAM user/role with access to Amazon Transcribe, Amazon Bedrock, Amazon S3, and Amazon Lambda
-
-## Target technology stack
-
-- Amazon Bedrock
-- Amazon Lambda
-- Amazon S3
-- Amazon Transcribe Live
-- Amazon CloudFront
-- Amazon API Gateway
-- AWS ColdBuild
-- AWS CDK
-- AWS EventBridge
-- AWS IAM
-- AWS Key Management Service
-- AWS Parameter Store
-- React
-
-## Solution Overview
-
-## Solution Architecture
+## Architecture
 
 ![Architecture Diagram](assets/solution_architecture.png)
 
-This diagram outlines a workflow for a voice-based application using AWS services. Here’s a step-by-step description of the workflow:
+1. User interacts with the React UI hosted on CloudFront
+2. API Gateway routes requests with API key authentication and WAF protection
+3. Get-Credentials Lambda returns temporary STS credentials for Amazon Transcribe
+4. Amazon Transcribe Live converts speech to text in real-time via WebSocket
+5. Orchestration Lambda (Docker-based) summarizes text via Bedrock and generates PDF
+6. Generated documents and audio files are stored in S3 with pre-signed URLs returned to the UI
 
-1. **User Interaction**:
+## Technology Stack
 
-   - A user interacts with the system through a UI on a device. This UI has a voice input feature.
+| Layer | Technology |
+|-------|-----------|
+| Infrastructure | AWS CDK 2.240.0 (TypeScript), cdk-nag |
+| Frontend | React 18.3, Vite 6.4, Cloudscape Design Components, TypeScript 5.7 |
+| API | Amazon API Gateway (REST), WAF, API Key auth |
+| Compute | AWS Lambda (Python 3.13), Docker container image |
+| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain 1.2 |
+| Storage | Amazon S3 (SSE encryption) |
+| Transcription | Amazon Transcribe Live (streaming WebSocket) |
+| Hosting | Amazon CloudFront (OAC, WAF, geo-restriction) |
+| Build | AWS CodeBuild (React app build triggered via EventBridge) |
+| Security | AWS KMS, IAM least-privilege, WAF, OAC, enforceSSL |
 
-2. **API Gateway**:
+## Project Structure
 
-   - The voice input from the user is sent to the API Gateway. The API Gateway acts as an entry point for all the API calls, handling request routing, authorization, and throttling.
+```
+├── bin/                          # CDK app entry point
+│   └── cdk-react-app.ts
+├── lib/
+│   ├── cdk-react-app-stack.ts    # Main CDK stack
+│   ├── constructs/               # CDK constructs
+│   │   ├── api-gateway.ts        # API Gateway + WAF + API key
+│   │   ├── lambda.ts             # Lambda functions (get-credentials + orchestration)
+│   │   ├── react-app-build.ts    # CodeBuild project for React app
+│   │   ├── react-app-deploy.ts   # CloudFront distribution + OAC
+│   │   └── s3.ts                 # S3 buckets (documents + React app)
+│   ├── lambda-functions/
+│   │   ├── get_credentials/      # STS credential vending Lambda
+│   │   └── orchestration/        # Summarization + PDF generation Lambda (Docker)
+│   └── react-app/                # React frontend application
+├── test/                         # CDK tests
+├── cdk.json                      # CDK configuration
+├── tsconfig.json                 # TypeScript configuration
+└── package.json                  # Node.js dependencies
+```
 
-3. **Authorization Lambda Function**:
+## Prerequisites
 
-   - The API Gateway triggers an AWS Lambda function for authorization. This function verifies if the user has the necessary permissions to access the services.
-
-4. **Amazon Transcribe Live**:
-
-   - Once authorized, the voice input is processed by Amazon Transcribe Live, which converts the speech to text in real-time.
-
-5. **Orchestration Lambda Function**:
-
-   - The transcribed text is then sent to another AWS Lambda function responsible for summarizing and generating content and storing the recorded audio files in S3. This could involve processing the text for various purposes, such as creating summaries, generating responses, or performing further analysis.
-
-6. **Amazon S3 Bucket**:
-
-   - Any generated content, summaries, or processed data are stored in an Amazon S3 bucket. This allows for scalable and durable storage of the processed information.
-
-7. **Return to UI**:
-   - Finally, the processed information or responses are sent back to the user’s device through the API Gateway, completing the workflow cycle.
+- **Docker** — Required for building the orchestration Lambda container image
+- **Node.js 20+** and npm
+- **Python 3.13+**
+- **AWS CDK CLI** — `npm install -g aws-cdk`
+- **AWS Account** bootstrapped with CDK (`cdk bootstrap`) in us-east-1 or us-west-2
+- **Amazon Bedrock Model Access** — Enable Claude Sonnet 4.6 and Claude Haiku 4.5 in the Bedrock console
+- **IAM Permissions** — Access to Amazon Transcribe, Amazon Bedrock, Amazon S3, AWS Lambda, CloudFront, API Gateway, CodeBuild, KMS, SSM
 
 ## Deployment
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-This project is set up like a standard Python project. The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory. To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
-
-To manually create a virtualenv on MacOS and Linux:
+### 1. Create and activate a virtual environment
 
 ```bash
-$ python3 -m venv .venv
+python3 -m venv .venv
+source .venv/bin/activate    # macOS/Linux
+# .venv\Scripts\activate.bat  # Windows
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+### 2. Install dependencies
 
 ```bash
-$ source .venv/bin/activate
+npm install
 ```
 
-If you are a Windows platform, you would activate the virtualenv like this:
-
-```powershell
-% .venv\Scripts\activate.bat
-```
-
-Once the virtualenv is activated, you can install the required dependencies.
+### 3. Deploy the stack
 
 ```bash
-$ npm install
+cdk deploy
 ```
 
-Once dependencies are installed, you can proceed to deploy cdk.
+The first deployment takes approximately 30–45 minutes to build the Docker image. Subsequent deployments take 5–8 minutes.
 
-```
-$ cdk deploy
-```
+After deployment, the CLI outputs:
+- **ReactAppUrl** — CloudFront URL for the web application
+- **ApiUrl** — API Gateway endpoint
+- **ApiKeyParameterName** — SSM Parameter Store key for the API key
+- **DocumentsS3Bucket** — S3 bucket for generated documents
 
-If this is your first time deploying it, the process may take approximately 30-45 minutes to build several Docker images in ECS (Amazon Elastic Container Service). Please be patient until it's completed. Afterward, it will start deploying the docgen-stack, which typically takes about 5-8 minutes.
+### 4. React app build
 
-Once the deployment process is complete, you will see the output of the cdk in the terminal, and you can also verify the status in your CloudFormation console.
+The React app is automatically built by CodeBuild after stack deployment via an EventBridge rule. The built artifacts are served from S3 through CloudFront.
 
-To delete the cdk once you have finished using it to avoid future costs, you can either delete it through the console or execute the following command in the terminal.
+### Cleanup
 
 ```bash
-$ cdk destroy
+cdk destroy
 ```
 
-You may also need to manually delete the S3 bucket generated by the cdk. Please ensure to delete all the generated resources to avoid incurring costs.
+You may also need to manually delete the S3 buckets created by the stack (they contain objects that prevent automatic deletion).
 
-## Useful CDK commands
+## CDK Commands
 
-- `cdk ls` list all stacks in the app
-- `cdk synth` emits the synthesized CloudFormation template
-- `cdk deploy` deploy this stack to your default AWS account/region
-- `cdk diff` compare deployed stack with current state
-- `cdk docs` open CDK documentation
-- `cdk destroy` dstroys one or more specified stacks
+| Command | Description |
+|---------|-------------|
+| `cdk ls` | List all stacks |
+| `cdk synth` | Synthesize CloudFormation template |
+| `cdk deploy` | Deploy stack to AWS |
+| `cdk diff` | Compare deployed stack with local changes |
+| `cdk destroy` | Delete the stack |
+| `npm run build` | Compile TypeScript |
+| `npm test` | Run CDK tests |
 
-## Authors and acknowledgment
+## AI Models
 
-Jundong Qiao (jdqiao@amazon.com)
-Praveen Kumar Jeyarajan (pjeyaraj@amazon.com)
-Michael Massey (mmssym@amazon.com)
+The solution uses Amazon Bedrock cross-region inference profiles:
+
+| Model | Inference Profile ID | Use Case |
+|-------|---------------------|----------|
+| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Fast summarization (default for document generation) |
+| Claude Sonnet 4.6 | `us.anthropic.claude-sonnet-4-6` | High-quality summarization |
+| Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` | Complex analysis (available, not used by default) |
+
+These models require cross-region inference profiles (not direct model IDs) as they don't support single-region on-demand invocation.
+
+## Security
+
+- CloudFront with Origin Access Control (OAC) and WAF
+- API Gateway with API key authentication and usage plans
+- S3 buckets with enforceSSL, block public access, and server-side encryption
+- IAM roles with least-privilege policies
+- KMS customer-managed key for encryption
+- Geo-restriction (US, CA) on CloudFront distribution
+- cdk-nag AwsSolutions checks enabled
+
+## Authors
+
+- Jundong Qiao (jdqiao@amazon.com)
+- Praveen Kumar Jeyarajan (pjeyaraj@amazon.com)
+- Michael Massey (mmssym@amazon.com)
+
+## License
+
+This project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file.
