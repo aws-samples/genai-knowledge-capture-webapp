@@ -8,8 +8,7 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk",
-    "postinstall": "cd node_modules/aws-cdk-lib/node_modules/minimatch && npm install minimatch@10.2.4 --install-strategy=shallow --no-save 2>/dev/null; cp -f node_modules/minimatch/* . 2>/dev/null; rm -rf node_modules; true"
+    "cdk": "cdk"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -24,12 +23,13 @@
   },
   "dependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "^2.240.0-alpha.0",
-    "aws-cdk-lib": "2.240.0",
+    "aws-cdk-lib": "2.241.0",
     "constructs": "^10.4.2",
     "source-map-support": "^0.5.21",
     "uuid": "^11.1.0"
   },
   "overrides": {
-    "minimatch": "10.2.4"
+    "minimatch": "10.2.4",
+    "fast-xml-parser": "^5.4.1"
   }
 }
