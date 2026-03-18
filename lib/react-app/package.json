@@ -10,10 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-transcribe-streaming": "^3.750.0",
+    "@aws-sdk/client-transcribe-streaming": "^3.999.0",
     "@cloudscape-design/components": "^3.0.900",
     "@cloudscape-design/global-styles": "^1.0.32",
-    "fast-xml-parser": "^5.4.1",
+    "fast-xml-parser": "^5.5.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
