@@ -13,7 +13,7 @@
     "@aws-sdk/client-transcribe-streaming": "^3.750.0",
     "@cloudscape-design/components": "^3.0.900",
     "@cloudscape-design/global-styles": "^1.0.32",
-    "fast-xml-parser": "^5.5.11",
+    "fast-xml-parser": "^5.7.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
