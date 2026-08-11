@@ -9,13 +9,13 @@ Docker-based AWS Lambda function that summarizes transcribed text using Amazon B
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | Python | 3.13 | Runtime |
-| AWS Lambda Powertools | 3.24.0 | Structured logging, tracing, metrics |
-| LangChain | 1.2.10 | LLM orchestration and prompt chaining |
-| LangChain AWS | 1.3.1 | Amazon Bedrock integration for LangChain |
-| WeasyPrint | 68.1 | HTML-to-PDF rendering |
-| Markdown | 3.6 | Markdown-to-HTML conversion |
+| AWS Lambda Powertools | 3.34.0 | Structured logging, tracing, metrics |
+| LangChain | 1.3.15 | LLM orchestration and prompt chaining |
+| LangChain AWS | 1.7.0 | Amazon Bedrock integration for LangChain |
+| WeasyPrint | 69.0 | HTML-to-PDF rendering |
+| Markdown | 3.10+ | Markdown-to-HTML conversion |
 | Dominate | 2.9.1 | HTML document generation |
-| Boto3 | 1.35+ | AWS SDK |
+| Boto3 | 1.43+ | AWS SDK |
 
 ## AI Models
 

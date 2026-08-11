@@ -24,11 +24,11 @@ A real-time voice transcription and document generation solution powered by AWS 
 
 | Layer | Technology |
 |-------|-----------|
-| Infrastructure | AWS CDK 2.240.0 (TypeScript), cdk-nag |
-| Frontend | React 18.3, Vite 6.4, Cloudscape Design Components, TypeScript 5.7 |
+| Infrastructure | AWS CDK 2.264.0 (TypeScript), cdk-nag |
+| Frontend | React 18.3, Vite 7.3, Cloudscape Design Components, TypeScript 5.9 |
 | API | Amazon API Gateway (REST), WAF, API Key auth |
 | Compute | AWS Lambda (Python 3.13), Docker container image |
-| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain 1.2 |
+| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain 1.3 |
 | Storage | Amazon S3 (SSE encryption) |
 | Transcription | Amazon Transcribe Live (streaming WebSocket) |
 | Hosting | Amazon CloudFront (OAC, WAF, geo-restriction) |
@@ -61,7 +61,7 @@ A real-time voice transcription and document generation solution powered by AWS 
 ## Prerequisites
 
 - **Docker** — Required for building the orchestration Lambda container image
-- **Node.js 20+** and npm
+- **Node.js 20.19+ or 22.12+** and npm (required by Vite 7)
 - **Python 3.13+**
 - **AWS CDK CLI** — `npm install -g aws-cdk`
 - **AWS Account** bootstrapped with CDK (`cdk bootstrap`) in us-east-1 or us-west-2

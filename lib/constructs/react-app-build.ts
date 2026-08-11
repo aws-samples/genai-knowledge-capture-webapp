@@ -111,7 +111,7 @@ export class ReactAppBuild extends Construct {
         phases: {
           install: {
             "runtime-versions": {
-              nodejs: 20,
+              nodejs: 22,
             },
           },
           pre_build: {
@@ -127,7 +127,9 @@ export class ReactAppBuild extends Construct {
         },
       }),
       environment: {
-        buildImage: LinuxBuildImage.STANDARD_6_0,
+        // standard:7.0 (Ubuntu 22.04) provides the nodejs 22 runtime required by Vite 7.
+        // https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html
+        buildImage: LinuxBuildImage.STANDARD_7_0,
       },
     });
     project.node.addDependency(reactAppBucket);

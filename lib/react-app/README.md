@@ -7,10 +7,10 @@ Browser-based voice transcription and document generation interface built with R
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | React | 18.3 | UI framework |
-| Vite | 6.4 | Build tool and dev server |
-| TypeScript | 5.7 | Type safety |
+| Vite | 7.3 | Build tool and dev server |
+| TypeScript | 5.9 | Type safety |
 | Cloudscape Design Components | 3.x | AWS-native UI component library |
-| AWS SDK (Transcribe Streaming) | 3.750+ | Real-time speech-to-text via WebSocket |
+| AWS SDK (Transcribe Streaming) | 3.1108+ | Real-time speech-to-text via WebSocket |
 
 ## Project Structure
 
