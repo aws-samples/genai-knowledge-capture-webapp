@@ -11,7 +11,7 @@ from utils import parse_summary
 
 
 def summarization(
-    question: str, list_of_answers: List[str], model_name: str = "ClaudeSonnet4_6"
+    question: str, list_of_answers: List[str], model_name: str = "ClaudeSonnet5"
 ) -> str:
     """
     Summarizes a list of answers for a given question using a Bedrock LLM.
@@ -19,7 +19,7 @@ def summarization(
     Inputs:
         - question (str): The question for which the answers need to be summarized.
         - list_of_answers (List[str]): A list of answers provided for the question.
-        - model_name (str, optional): The model key to use. Defaults to "ClaudeSonnet4_6".
+        - model_name (str, optional): The model key to use. Defaults to "ClaudeSonnet5".
     Returns:
         - ans (str): The summarized answer.
     """
@@ -33,7 +33,9 @@ def summarization(
         [system_message_template, human_message_template]
     )
 
-    llm = Connections.get_bedrock_llm(max_tokens=4096, model_name=model_name)
+    # 8192 leaves room for adaptive thinking, which draws from the same budget as
+    # the answer on Claude Sonnet 5 and Claude Opus 5.
+    llm = Connections.get_bedrock_llm(max_tokens=8192, model_name=model_name)
 
     chain = prompt | llm | parser
 

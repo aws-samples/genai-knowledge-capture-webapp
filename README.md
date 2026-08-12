@@ -5,7 +5,7 @@ A real-time voice transcription and document generation solution powered by AWS 
 ## Features
 
 - **Real-Time Voice Transcription** — Browser-based audio capture streamed to Amazon Transcribe for live speech-to-text conversion. Users can review and edit transcriptions before submission.
-- **AI-Powered Summarization** — Transcribed text is summarized into professional documents using Claude 4.5/4.6 models on Amazon Bedrock via LangChain.
+- **AI-Powered Summarization** — Transcribed text is summarized into professional documents using Claude models on Amazon Bedrock via LangChain.
 - **PDF Document Generation** — Summaries are rendered as styled PDF documents using WeasyPrint and uploaded to S3 with pre-signed download URLs.
 - **Audio Recording Storage** — Original audio recordings are saved alongside generated documents in S3.
 
@@ -32,7 +32,7 @@ user request. See [orchestration/README.md](lib/lambda-functions/orchestration/R
 | Frontend | React 18.3, Vite 8.2 (rolldown), Cloudscape Design Components, TypeScript 5.9 |
 | API | Amazon API Gateway (REST), WAF, API Key auth |
 | Compute | AWS Lambda (Python 3.13), Docker container image |
-| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain (core + AWS) 1.x |
+| AI/ML | Amazon Bedrock (Claude Sonnet 5, Claude Haiku 4.5, Claude Opus 5), LangChain (core + AWS) 1.x |
 | Storage | Amazon S3 (SSE encryption) |
 | Transcription | Amazon Transcribe Live (streaming WebSocket) |
 | Hosting | Amazon CloudFront (OAC, WAF, geo-restriction) |
@@ -68,7 +68,7 @@ user request. See [orchestration/README.md](lib/lambda-functions/orchestration/R
 - **Node.js 20.19+ or 22.12+** and npm (required by Vite 8)
 - **AWS CDK CLI** — `npm install -g aws-cdk`
 - **AWS Account** bootstrapped with CDK (`cdk bootstrap`) in us-east-1 or us-west-2
-- **Amazon Bedrock Model Access** — Enable Claude Sonnet 4.6 and Claude Haiku 4.5 in the Bedrock console
+- **Amazon Bedrock Model Access** — Enable Claude Sonnet 5 (used by default) in the Bedrock console, plus Claude Haiku 4.5 and Claude Opus 5 if you switch to them
 - **IAM Permissions** — Access to Amazon Transcribe, Amazon Bedrock, Amazon S3, AWS Lambda, CloudFront, API Gateway, CodeBuild, KMS, SSM
 
 A local Python installation is not required. The orchestration Lambda's Python
@@ -134,8 +134,10 @@ CORS headers, so a browser client can read the status instead of seeing an opaqu
 network error; a `504` means the request exceeded API Gateway's 29 second
 integration timeout.
 
-Expected latency for the orchestration endpoint is roughly 4 seconds warm and 5–8
-seconds on a cold container.
+Expected latency for the orchestration endpoint was roughly 4 seconds warm and 5–8
+seconds on a cold container when Claude Haiku 4.5 was the summarization model. Claude
+Sonnet 5 is a larger model and thinks on every request, so expect it to be slower;
+these figures have not been re-measured against it.
 
 ## Cleanup
 
@@ -162,15 +164,39 @@ behind and needs to be emptied and deleted manually.
 
 ## AI Models
 
-The solution uses Amazon Bedrock cross-region inference profiles:
+The solution uses Amazon Bedrock US geo cross-Region inference profiles:
 
 | Model | Inference Profile ID | Use Case |
 |-------|---------------------|----------|
-| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Fast summarization (default for document generation) |
-| Claude Sonnet 4.6 | `us.anthropic.claude-sonnet-4-6` | High-quality summarization |
-| Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` | Complex analysis (available, not used by default) |
+| Claude Sonnet 5 | `us.anthropic.claude-sonnet-5` | High-quality summarization (default for document generation) |
+| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Fast, low-cost summarization |
+| Claude Opus 5 | `us.anthropic.claude-opus-5` | Complex analysis (available, not used by default) |
 
-These models require cross-region inference profiles (not direct model IDs) as they don't support single-region on-demand invocation.
+These models are invoked through cross-Region inference profiles (the `us.` prefixed
+IDs) rather than direct model IDs, which distributes traffic across `us-east-1`,
+`us-east-2`, and `us-west-2` and requires model access in each destination Region.
+
+Claude Sonnet 5 and Claude Opus 5 do not accept `temperature`, `top_p`, or `top_k` —
+[those parameters were dropped starting with Claude Opus 4.7](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-7.html)
+and the recommended migration path is to omit them and steer behavior through the
+prompt. `MODEL_CONFIG` in
+[connections.py](lib/lambda-functions/orchestration/connections.py) records this per
+model, so the sampling parameters are sent only for Claude Haiku 4.5.
+
+Both Claude 5 models also run with
+[adaptive thinking](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-adaptive-thinking.html)
+(always on for Sonnet 5 and not disableable; on by default for Opus 5), which affects
+this workload in two ways:
+
+- Thinking tokens are drawn from the same `max_tokens` allowance as the answer, so
+  `max_tokens` is 8192 rather than 4096 to keep the summary from being squeezed.
+- The request sets `output_config.effort` to `low`, the setting for cases where
+  "speed matters most", because the call sits behind API Gateway's 29 second
+  integration timeout.
+
+Thinking blocks do not reach the summarization chain's `XMLOutputParser`: LangChain's
+non-streaming Bedrock adapter joins only `text` content blocks and reports thinking
+separately.
 
 ## Security
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Docker-based AWS Lambda function that summarizes transcribed text using Amazon Bedrock (Claude 4.5/4.6) and generates styled PDF documents. The function receives transcribed text and audio recordings, invokes an LLM for summarization via LangChain, renders the summary as a PDF using WeasyPrint, and uploads all artifacts to S3 with pre-signed download URLs.
+Docker-based AWS Lambda function that summarizes transcribed text using Amazon Bedrock (Claude Sonnet 5 by default, Claude Haiku 4.5 / Opus 5 available) and generates styled PDF documents. The function receives transcribed text and audio recordings, invokes an LLM for summarization via LangChain, renders the summary as a PDF using WeasyPrint, and uploads all artifacts to S3 with pre-signed download URLs.
 
 ## Technology Stack
 
@@ -49,8 +49,9 @@ fetch the image layers, which has been measured at 22–28 s — beyond API Gate
   ~250 MB, so the setting is for CPU, not footprint.
 - A custom resource sends `{"warmup": true}` to the function at the end of every
   deployment. The handler imports the heavy modules and returns without calling
-  Bedrock, so the layer fetch is paid at deploy time. Steady-state requests take
-  5–8 s cold and ~4 s warm.
+  Bedrock, so the layer fetch is paid at deploy time. Steady-state requests were
+  measured at 5–8 s cold and ~4 s warm with Claude Haiku 4.5; Claude Sonnet 5 is
+  larger and thinks on every request, so expect higher figures.
 
 To warm the function manually:
 
@@ -68,13 +69,37 @@ function's 60 s timeout.
 
 ## AI Models
 
-Uses Amazon Bedrock cross-region inference profiles:
+Uses Amazon Bedrock US geo cross-Region inference profiles:
 
-| Model | Inference Profile ID | Use Case |
-|-------|---------------------|----------|
-| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Default — fast summarization |
-| Claude Sonnet 4.6 | `us.anthropic.claude-sonnet-4-6` | High-quality summarization |
-| Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` | Complex analysis (available) |
+| Model | Inference Profile ID | Sampling params | Use Case |
+|-------|---------------------|-----------------|----------|
+| Claude Sonnet 5 | `us.anthropic.claude-sonnet-5` | No | Default — high-quality summarization |
+| Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Yes | Fast, low-cost summarization |
+| Claude Opus 5 | `us.anthropic.claude-opus-5` | No | Complex analysis (available) |
+
+`temperature`, `top_p`, and `top_k` were
+[dropped starting with Claude Opus 4.7](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-4-7.html);
+the recommended migration path is to omit them and steer the model through the
+prompt. `MODEL_CONFIG` in [connections.py](connections.py) carries a
+`supports_sampling_params` flag per model, and `get_bedrock_llm` sends
+`temperature`/`top_k` only for Claude Haiku 4.5.
+
+### Thinking
+
+Claude Sonnet 5 runs with
+[adaptive thinking](https://docs.aws.amazon.com/bedrock/latest/userguide/claude-messages-adaptive-thinking.html)
+always on — it cannot be disabled — and Claude Opus 5 has it on by default. Two
+consequences for this function:
+
+- Thinking tokens come out of the same `max_tokens` allowance as the answer, so
+  [summarization.py](summarization.py) requests 8192 tokens instead of 4096.
+- `MODEL_CONFIG` sets `output_config.effort` to `low` for both Claude 5 models, the
+  level documented for when "speed matters most", since the call has to finish inside
+  API Gateway's 29 s integration timeout.
+
+Thinking blocks do not break XML parsing. On the non-streaming path used here,
+`langchain_aws` joins only `text` content blocks into the message text and returns
+thinking separately, so `XMLOutputParser` sees just the `<Output>` document.
 
 ## File Reference
 
