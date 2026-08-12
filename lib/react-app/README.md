@@ -64,6 +64,31 @@ npm run build
 npm run lint
 ```
 
+`npm run lint` uses the legacy `.eslintrc.cjs` format, which ESLint 9 no longer reads
+by default, so it currently fails with "couldn't find an eslint.config.js file". Until
+the config is migrated to `eslint.config.js`, run it in compatibility mode:
+
+```bash
+ESLINT_USE_FLAT_CONFIG=false npm run lint
+```
+
+That reports three pre-existing findings: an unused `err` binding in
+`context/AwsCredentialsContext.tsx`, and two `react-refresh/only-export-components`
+warnings from the context files exporting both a provider and a hook.
+
+## Error handling
+
+`src/services/documentApi.ts` returns `null` when the orchestration request fails and
+logs the HTTP status to the console. `TranscribeForm` then renders the "There was an
+error with your request" banner. When diagnosing a failure, check the console for the
+status:
+
+| Status | Meaning |
+|--------|---------|
+| `403` | Missing or invalid API key — check `VITE_API_KEY` in the build |
+| `504` | Request exceeded API Gateway's 29 second integration timeout |
+| `502` | The orchestration Lambda raised an error — check its CloudWatch logs |
+
 ## Build & Deployment
 
 The React app is built and deployed automatically:
@@ -73,6 +98,12 @@ The React app is built and deployed automatically:
 3. CodeBuild runs `npm ci && npm run build`, injecting environment variables from SSM Parameter Store
 4. Built artifacts are output to the `dist/` prefix in the S3 bucket
 5. CloudFront serves the built app from S3 with Origin Access Control (OAC)
+
+CodeBuild uses the `standard:7.0` image with the Node.js 22 runtime. Vite 7 requires
+Node.js `^20.19.0 || >=22.12.0`, and the Node.js 22 runtime is not available on
+`standard:6.0`, so both the image and the runtime version must stay in step with the
+Vite major version. See
+[available runtimes](https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html).
 
 ## License
 

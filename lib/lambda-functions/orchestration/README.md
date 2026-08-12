@@ -15,11 +15,27 @@ Docker-based AWS Lambda function that summarizes transcribed text using Amazon B
 | WeasyPrint | 69.0 | HTML-to-PDF rendering |
 | Markdown | 3.10+ | Markdown-to-HTML conversion |
 | Dominate | 2.9.1 | HTML document generation |
+| defusedxml | 0.7.1 | Required at runtime by `XMLOutputParser` |
 | Boto3 | 1.43+ | AWS SDK |
+
+> `defusedxml` is not imported by this package's code and is not declared by
+> `langchain-core`, but `langchain_core.output_parsers.XMLOutputParser` imports it
+> when using its default `parser="defusedxml"` mode, which
+> [summarization.py](summarization.py) relies on. It has to stay pinned here or
+> summarization fails with an `ImportError` at parse time.
 
 > The `langchain` meta-package is intentionally not a dependency. Only
 > `langchain-core` and `langchain-aws` are imported, and omitting the meta-package
 > removes the code paths covered by CVE-2026-55443.
+
+## Function configuration
+
+| Setting | Value | Notes |
+|---------|-------|-------|
+| Architecture | `arm64` | |
+| Memory | 3008 MB | Drives CPU allocation; max memory used is ~250 MB |
+| Timeout | 60 s | API Gateway still caps the request at 29 s |
+| Package type | Container image | `public.ecr.aws/lambda/python:3.13` base |
 
 ### Cold start
 
@@ -35,6 +51,20 @@ fetch the image layers, which has been measured at 22–28 s — beyond API Gate
   deployment. The handler imports the heavy modules and returns without calling
   Bedrock, so the layer fetch is paid at deploy time. Steady-state requests take
   5–8 s cold and ~4 s warm.
+
+To warm the function manually:
+
+```bash
+aws lambda invoke --function-name transcribe-orchestration-function \
+  --payload '{"warmup": true}' --cli-binary-format raw-in-base64-out /dev/stdout
+```
+
+If a request ever does exceed 29 s, API Gateway returns `504` while the function
+keeps running to completion, so the document still lands in S3 even though the
+client saw an error. For more headroom, the account's
+`Maximum integration timeout in milliseconds` quota (`L-E5AE38E3`, default 29000)
+is adjustable; raising it allows the integration timeout to be set closer to the
+function's 60 s timeout.
 
 ## AI Models
 
@@ -79,6 +109,13 @@ Uses Amazon Bedrock cross-region inference profiles:
 | `documentText` | String | Transcribed answer text from Amazon Transcribe |
 | `audioFiles` | String[] | Base64-encoded audio recordings |
 
+The handler also accepts a warmup event, which loads the heavy imports and returns
+without calling Bedrock or writing to S3:
+
+```json
+{ "warmup": true }
+```
+
 ## Output
 
 ```json
@@ -108,7 +145,32 @@ Uses Amazon Bedrock cross-region inference profiles:
 
 ## Docker Build
 
-The Lambda runs as a Docker container image based on `public.ecr.aws/lambda/python:3.13`. The image includes the `pango` system library required by WeasyPrint for PDF rendering. CDK builds the image automatically via `DockerImageCode.fromImageAsset()`.
+CDK builds the image automatically via `DockerImageCode.fromImageAsset()`. The image
+is based on `public.ecr.aws/lambda/python:3.13` and:
+
+- installs the `pango` system library that WeasyPrint needs for PDF rendering
+- installs the Python dependencies from [requirements.txt](requirements.txt)
+- precompiles bytecode with `compileall` so the cold start does not pay `.pyc`
+  compilation for the import graph
+- runs as a non-root user (UID 993)
+
+To build and exercise it locally:
+
+```bash
+docker build --platform linux/arm64 -t orchestration:local .
+
+docker run --rm --platform linux/arm64 \
+  -e POWERTOOLS_METRICS_NAMESPACE=local -e POWERTOOLS_SERVICE_NAME=local \
+  -e AWS_REGION=us-east-1 -e S3_BUCKET_NAME=example -e XDG_CACHE_HOME=/tmp \
+  --entrypoint python orchestration:local -c "
+import sys; sys.path.insert(0, '/var/task')
+import document_generator as dg
+dg.html_to_pdf(dg.generate_html(dg.markdown_to_html('# Title')), '/tmp/out.pdf')
+import os; print('pdf bytes:', os.path.getsize('/tmp/out.pdf'))"
+```
+
+`XDG_CACHE_HOME=/tmp` is required — without a writable cache directory, fontconfig
+fails and PDF rendering errors out.
 
 ## License
 

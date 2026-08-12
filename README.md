@@ -17,8 +17,12 @@ A real-time voice transcription and document generation solution powered by AWS 
 2. API Gateway routes requests with API key authentication and WAF protection
 3. Get-Credentials Lambda returns temporary STS credentials for Amazon Transcribe
 4. Amazon Transcribe Live converts speech to text in real-time via WebSocket
-5. Orchestration Lambda (Docker-based) summarizes text via Bedrock and generates PDF
+5. Orchestration Lambda (Docker-based, ARM64) summarizes text via Bedrock and generates the PDF
 6. Generated documents and audio files are stored in S3 with pre-signed URLs returned to the UI
+
+A custom resource sends a warmup invocation to the orchestration Lambda at the end
+of every deployment, so the container image layer fetch does not land on the first
+user request. See [orchestration/README.md](lib/lambda-functions/orchestration/README.md#cold-start).
 
 ## Technology Stack
 
@@ -32,7 +36,7 @@ A real-time voice transcription and document generation solution powered by AWS 
 | Storage | Amazon S3 (SSE encryption) |
 | Transcription | Amazon Transcribe Live (streaming WebSocket) |
 | Hosting | Amazon CloudFront (OAC, WAF, geo-restriction) |
-| Build | AWS CodeBuild (React app build triggered via EventBridge) |
+| Build | AWS CodeBuild (`standard:7.0`, Node.js 22) triggered via EventBridge |
 | Security | AWS KMS, IAM least-privilege, WAF, OAC, enforceSSL |
 
 ## Project Structure
@@ -62,35 +66,32 @@ A real-time voice transcription and document generation solution powered by AWS 
 
 - **Docker** — Required for building the orchestration Lambda container image
 - **Node.js 20.19+ or 22.12+** and npm (required by Vite 7)
-- **Python 3.13+**
 - **AWS CDK CLI** — `npm install -g aws-cdk`
 - **AWS Account** bootstrapped with CDK (`cdk bootstrap`) in us-east-1 or us-west-2
 - **Amazon Bedrock Model Access** — Enable Claude Sonnet 4.6 and Claude Haiku 4.5 in the Bedrock console
 - **IAM Permissions** — Access to Amazon Transcribe, Amazon Bedrock, Amazon S3, AWS Lambda, CloudFront, API Gateway, CodeBuild, KMS, SSM
 
+A local Python installation is not required. The orchestration Lambda's Python
+dependencies are installed inside its container image at build time, and the
+get-credentials Lambda uses only the AWS-provided `boto3`.
+
 ## Deployment
 
-### 1. Create and activate a virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate    # macOS/Linux
-# .venv\Scripts\activate.bat  # Windows
-```
-
-### 2. Install dependencies
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Deploy the stack
+### 2. Deploy the stack
 
 ```bash
 cdk deploy
 ```
 
-The first deployment takes approximately 30–45 minutes to build the Docker image. Subsequent deployments take 5–8 minutes.
+The initial deployment takes about 6–7 minutes, most of which is building and
+pushing the orchestration Lambda's container image. Incremental deployments take
+20–70 seconds, and are faster still when the container image is unchanged.
 
 After deployment, the CLI outputs:
 - **ReactAppUrl** — CloudFront URL for the web application
@@ -98,17 +99,54 @@ After deployment, the CLI outputs:
 - **ApiKeyParameterName** — SSM Parameter Store key for the API key
 - **DocumentsS3Bucket** — S3 bucket for generated documents
 
-### 4. React app build
+### 3. React app build
 
-The React app is automatically built by CodeBuild after stack deployment via an EventBridge rule. The built artifacts are served from S3 through CloudFront.
+The React app is automatically built by CodeBuild after stack deployment via an
+EventBridge rule that fires on stack `CREATE_COMPLETE` and `UPDATE_COMPLETE`. The
+build runs on the `standard:7.0` image with the Node.js 22 runtime and writes its
+output to the `dist/` prefix of the React app bucket, which CloudFront serves.
 
-### Cleanup
+## Testing the deployment
+
+The API requires an API key, which the stack stores in Parameter Store. Retrieve it
+and call the two endpoints directly:
+
+```bash
+API_URL=$(aws cloudformation describe-stacks --stack-name CdkReactAppStack \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+API_KEY=$(aws ssm get-parameter --name transcribe-api-key \
+  --query Parameter.Value --output text)
+
+# Temporary STS credentials used by the browser for Amazon Transcribe
+curl -s -H "x-api-key: $API_KEY" "${API_URL}get-credentials"
+
+# Summarize text and generate a PDF; returns pre-signed URLs
+curl -s -X POST "${API_URL}orchestration" \
+  -H "x-api-key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{"documentName":"smoke-test",
+       "questionText":"What is Amazon SageMaker?",
+       "documentText":"Amazon SageMaker is a fully managed machine learning service.",
+       "audioFiles":[]}'
+```
+
+Requests without a valid API key return `403`. API Gateway error responses carry
+CORS headers, so a browser client can read the status instead of seeing an opaque
+network error; a `504` means the request exceeded API Gateway's 29 second
+integration timeout.
+
+Expected latency for the orchestration endpoint is roughly 4 seconds warm and 5–8
+seconds on a cold container.
+
+## Cleanup
 
 ```bash
 cdk destroy
 ```
 
-You may also need to manually delete the S3 buckets created by the stack (they contain objects that prevent automatic deletion).
+Both S3 buckets are created with `RemovalPolicy.DESTROY` and `autoDeleteObjects`, so
+their contents are removed as part of the teardown. If CloudFront writes access logs
+into the React app bucket while the stack is being deleted, that bucket can be left
+behind and needs to be emptied and deleted manually.
 
 ## CDK Commands
 
