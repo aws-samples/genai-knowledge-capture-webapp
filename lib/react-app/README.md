@@ -7,7 +7,7 @@ Browser-based voice transcription and document generation interface built with R
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | React | 18.3 | UI framework |
-| Vite | 7.3 | Build tool and dev server |
+| Vite | 8.2 | Build tool and dev server (rolldown bundler) |
 | TypeScript | 5.9 | Type safety |
 | Cloudscape Design Components | 3.x | AWS-native UI component library |
 | AWS SDK (Transcribe Streaming) | 3.1108+ | Real-time speech-to-text via WebSocket |
@@ -99,11 +99,19 @@ The React app is built and deployed automatically:
 4. Built artifacts are output to the `dist/` prefix in the S3 bucket
 5. CloudFront serves the built app from S3 with Origin Access Control (OAC)
 
-CodeBuild uses the `standard:7.0` image with the Node.js 22 runtime. Vite 7 requires
-Node.js `^20.19.0 || >=22.12.0`, and the Node.js 22 runtime is not available on
+CodeBuild uses the `standard:7.0` image with the Node.js 22 runtime. Vite 8 requires
+Node.js `^20.19.0 || >=22.12.0` — the same range Vite 7 required, so the upgrade to
+Vite 8 needed no build environment change. The Node.js 22 runtime is not available on
 `standard:6.0`, so both the image and the runtime version must stay in step with the
 Vite major version. See
 [available runtimes](https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html).
+
+Vite 8 replaces Rollup with [rolldown](https://rolldown.rs) as the production bundler.
+The build produces one JS chunk rather than the two Vite 7 emitted: rolldown inlines
+the small browser-conditional chunk that Rollup split out of the AWS SDK. There are no
+dynamic `import()` calls in `src/`, so this only changes chunking, not module loading.
+Build configuration that previously used `build.rollupOptions` is now
+`build.rolldownOptions`; this app sets neither.
 
 ## License
 

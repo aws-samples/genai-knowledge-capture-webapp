@@ -127,7 +127,8 @@ export class ReactAppBuild extends Construct {
         },
       }),
       environment: {
-        // standard:7.0 (Ubuntu 22.04) provides the nodejs 22 runtime required by Vite 7.
+        // standard:7.0 (Ubuntu 22.04) provides the nodejs 22 runtime required by Vite 8
+        // (^20.19.0 || >=22.12.0, unchanged from Vite 7).
         // https://docs.aws.amazon.com/codebuild/latest/userguide/available-runtimes.html
         buildImage: LinuxBuildImage.STANDARD_7_0,
       },

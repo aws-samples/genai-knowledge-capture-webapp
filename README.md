@@ -29,7 +29,7 @@ user request. See [orchestration/README.md](lib/lambda-functions/orchestration/R
 | Layer | Technology |
 |-------|-----------|
 | Infrastructure | AWS CDK 2.264.0 (TypeScript), cdk-nag |
-| Frontend | React 18.3, Vite 7.3, Cloudscape Design Components, TypeScript 5.9 |
+| Frontend | React 18.3, Vite 8.2 (rolldown), Cloudscape Design Components, TypeScript 5.9 |
 | API | Amazon API Gateway (REST), WAF, API Key auth |
 | Compute | AWS Lambda (Python 3.13), Docker container image |
 | AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain (core + AWS) 1.x |
@@ -65,7 +65,7 @@ user request. See [orchestration/README.md](lib/lambda-functions/orchestration/R
 ## Prerequisites
 
 - **Docker** — Required for building the orchestration Lambda container image
-- **Node.js 20.19+ or 22.12+** and npm (required by Vite 7)
+- **Node.js 20.19+ or 22.12+** and npm (required by Vite 8)
 - **AWS CDK CLI** — `npm install -g aws-cdk`
 - **AWS Account** bootstrapped with CDK (`cdk bootstrap`) in us-east-1 or us-west-2
 - **Amazon Bedrock Model Access** — Enable Claude Sonnet 4.6 and Claude Haiku 4.5 in the Bedrock console
@@ -181,6 +181,23 @@ These models require cross-region inference profiles (not direct model IDs) as t
 - KMS customer-managed key for encryption
 - Geo-restriction (US, CA) on CloudFront distribution
 - cdk-nag AwsSolutions checks enabled
+
+### Known dependency findings
+
+`brace-expansion` 5.0.8 is reported by Dependabot under
+[GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895) (high, DoS via
+unbounded intermediate arrays). It cannot currently be remediated from this repository:
+the only vulnerable copy is `node_modules/aws-cdk-lib/node_modules/brace-expansion`,
+reached through aws-cdk-lib's own bundled `minimatch`. Because that copy is marked
+`inBundle` — shipped inside the aws-cdk-lib tarball — neither `npm audit fix` nor an
+`overrides` entry replaces it, and aws-cdk-lib is already pinned to the latest release
+(2.264.0). It clears when aws-cdk-lib ships a release bundling 5.0.9 or later.
+
+The accepted risk is low: aws-cdk-lib is a build-time dependency of the CDK app only.
+It is absent from `lib/react-app/package.json` and from the orchestration Lambda's
+`requirements.txt`, so this code path runs during `cdk synth`/`cdk deploy` over
+developer-authored glob patterns and never reaches the CloudFront-served bundle or the
+Lambda container. Re-check on each aws-cdk-lib upgrade.
 
 ## Authors
 
