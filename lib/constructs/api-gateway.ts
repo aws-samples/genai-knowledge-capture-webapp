@@ -9,6 +9,7 @@ import {
   AccessLogFormat,
   Deployment,
   RestApi,
+  ResponseType,
   Stage,
   Method,
   Cors,
@@ -32,14 +33,18 @@ export class ApiGateway extends Construct {
     super(scope, id);
 
     // Create the REST API
-    const restApi = this.createRestApi();
+    const { restApi, errorResponseHeaders, errorResponseTypes } =
+      this.createRestApi();
 
     // Create the WebACL
     const restApiACL = this.createWebACL();
     restApiACL.applyRemovalPolicy(RemovalPolicy.DESTROY);
 
     // Create the API's deployment and stage
-    const devStage = this.createDeploymentAndStage(restApi);
+    const devStage = this.createDeploymentAndStage(restApi, {
+      errorResponseHeaders,
+      errorResponseTypes: Object.keys(errorResponseTypes),
+    });
 
     // Associate the WebACL with the API stage
     this.associateWebACLWithDevStage(devStage, restApiACL);
@@ -79,7 +84,11 @@ export class ApiGateway extends Construct {
     this.createOutputs();
   }
 
-  private createRestApi(): RestApi {
+  private createRestApi(): {
+    restApi: RestApi;
+    errorResponseHeaders: Record<string, string>;
+    errorResponseTypes: Record<string, ResponseType>;
+  } {
     const corsOptions: CorsOptions = {
       allowOrigins: ["*"],
       allowMethods: ["OPTIONS", "GET", "POST", "PUT", "DELETE"],
@@ -101,6 +110,33 @@ export class ApiGateway extends Construct {
       defaultCorsPreflightOptions: corsOptions,
       defaultMethodOptions: { authorizationType: AuthorizationType.NONE },
     });
+
+    // API Gateway generates 4XX/5XX responses (integration timeout, throttling,
+    // missing API key, WAF block) without CORS headers, which a browser reports as
+    // an opaque network error instead of a readable status. Add the headers so the
+    // UI can surface the actual failure. The specific types are declared alongside
+    // the defaults because the DEFAULT_4XX/DEFAULT_5XX mappings do not reliably
+    // apply to responses API Gateway generates before reaching the integration.
+    const errorResponseHeaders = {
+      "Access-Control-Allow-Origin": "'*'",
+      "Access-Control-Allow-Headers": "'*'",
+    };
+    const errorResponseTypes: Record<string, ResponseType> = {
+      Default4XXResponse: ResponseType.DEFAULT_4XX,
+      Default5XXResponse: ResponseType.DEFAULT_5XX,
+      IntegrationTimeoutResponse: ResponseType.INTEGRATION_TIMEOUT,
+      IntegrationFailureResponse: ResponseType.INTEGRATION_FAILURE,
+      InvalidApiKeyResponse: ResponseType.INVALID_API_KEY,
+      ThrottledResponse: ResponseType.THROTTLED,
+      RequestTooLargeResponse: ResponseType.REQUEST_TOO_LARGE,
+      WafFilteredResponse: ResponseType.WAF_FILTERED,
+    };
+    for (const [id, type] of Object.entries(errorResponseTypes)) {
+      restApi.addGatewayResponse(id, {
+        type,
+        responseHeaders: errorResponseHeaders,
+      });
+    }
     NagSuppressions.addResourceSuppressions(
       restApi,
       [
@@ -124,7 +160,7 @@ export class ApiGateway extends Construct {
       true
     );
 
-    return restApi;
+    return { restApi, errorResponseHeaders, errorResponseTypes };
   }
 
   private createWebACL(): CfnWebACL {
@@ -170,9 +206,19 @@ export class ApiGateway extends Construct {
     });
   }
 
-  private createDeploymentAndStage(restApi: RestApi): Stage {
+  private createDeploymentAndStage(
+    restApi: RestApi,
+    apiConfig: Record<string, unknown>
+  ): Stage {
     const devLogGroup = new LogGroup(this, "DevLogs");
     const deployment = new Deployment(this, "Deployment", { api: restApi });
+    // This stack manages the deployment and stage explicitly (deploy: false) so it
+    // can attach access logs and a WAF association. That means CloudFormation only
+    // creates a new deployment when this resource's logical ID changes, so
+    // API-level configuration such as gateway responses would otherwise never
+    // reach the stage. Mixing the configuration into the logical ID forces a fresh
+    // deployment whenever it changes.
+    deployment.addToLogicalId(apiConfig);
     const devStage = new Stage(this, "dev", {
       deployment,
       stageName: "dev",

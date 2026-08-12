@@ -10,12 +10,31 @@ Docker-based AWS Lambda function that summarizes transcribed text using Amazon B
 |-----------|---------|---------|
 | Python | 3.13 | Runtime |
 | AWS Lambda Powertools | 3.34.0 | Structured logging, tracing, metrics |
-| LangChain | 1.3.15 | LLM orchestration and prompt chaining |
 | LangChain AWS | 1.7.0 | Amazon Bedrock integration for LangChain |
+| LangChain Core | 1.5.4 | Prompt templates and output parsers |
 | WeasyPrint | 69.0 | HTML-to-PDF rendering |
 | Markdown | 3.10+ | Markdown-to-HTML conversion |
 | Dominate | 2.9.1 | HTML document generation |
 | Boto3 | 1.43+ | AWS SDK |
+
+> The `langchain` meta-package is intentionally not a dependency. Only
+> `langchain-core` and `langchain-aws` are imported, and omitting the meta-package
+> removes the code paths covered by CVE-2026-55443.
+
+### Cold start
+
+The image is ~1.2 GB, and the first invocation after a new image is pushed has to
+fetch the image layers, which has been measured at 22–28 s — beyond API Gateway's
+29 s integration timeout. Three things keep that off the user path:
+
+- `weasyprint` and `langchain_aws` are imported lazily, inside the functions that
+  use them, keeping module-scope import work small.
+- The function runs at 3008 MB. Memory drives CPU allocation; max memory used is
+  ~250 MB, so the setting is for CPU, not footprint.
+- A custom resource sends `{"warmup": true}` to the function at the end of every
+  deployment. The handler imports the heavy modules and returns without calling
+  Bedrock, so the layer fetch is paid at deploy time. Steady-state requests take
+  5–8 s cold and ~4 s warm.
 
 ## AI Models
 

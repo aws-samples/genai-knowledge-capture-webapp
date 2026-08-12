@@ -1,4 +1,3 @@
-from weasyprint import HTML
 from exceptions import CodeError
 from dominate.util import raw
 from dominate.tags import html, head, style, body, h1, h2, u
@@ -93,6 +92,12 @@ def html_to_pdf(html_document: str, pdf_path: str) -> None:
         Path where the PDF file will be generated.
     """
     try:
+        # Imported lazily: WeasyPrint pulls in native cairo/pango bindings, and
+        # importing it at module scope pushed the Lambda init phase past its 10s
+        # limit, which made the container re-run every import inside the first
+        # invocation and tripped API Gateway's 29s integration timeout.
+        from weasyprint import HTML
+
         HTML(string=html_document, base_url=os.getcwd()).write_pdf(pdf_path)
         logger.debug(f"PDF file generated at: {pdf_path}")
     except Exception as exception:

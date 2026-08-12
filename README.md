@@ -28,7 +28,7 @@ A real-time voice transcription and document generation solution powered by AWS 
 | Frontend | React 18.3, Vite 7.3, Cloudscape Design Components, TypeScript 5.9 |
 | API | Amazon API Gateway (REST), WAF, API Key auth |
 | Compute | AWS Lambda (Python 3.13), Docker container image |
-| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain 1.3 |
+| AI/ML | Amazon Bedrock (Claude Sonnet 4.6, Claude Haiku 4.5), LangChain (core + AWS) 1.x |
 | Storage | Amazon S3 (SSE encryption) |
 | Transcription | Amazon Transcribe Live (streaming WebSocket) |
 | Hosting | Amazon CloudFront (OAC, WAF, geo-restriction) |

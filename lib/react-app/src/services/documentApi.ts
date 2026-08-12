@@ -79,6 +79,11 @@ export const callDocumentApi = async (
     });
 
     if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      console.error(
+        `Document API returned ${response.status} ${response.statusText}. ` +
+          `A 504 means the request exceeded the API Gateway integration timeout. ${detail}`,
+      );
       return null;
     }
 

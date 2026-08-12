@@ -35,6 +35,19 @@ class Request(BaseModel):
 @tracer.capture_lambda_handler
 @metrics.log_metrics(capture_cold_start_metric=True)
 def lambda_handler(event: Request, _context: LambdaContext) -> str:
+    # A warmup ping is sent once after each deployment. The first invocation of a
+    # freshly pushed container image pays for fetching the image layers, which can
+    # take longer than API Gateway's 29s integration timeout. Absorbing that here
+    # keeps the first real user request fast. The heavy modules are imported
+    # explicitly so their layers are faulted in, then we return without calling
+    # Bedrock or generating a document.
+    if isinstance(event, dict) and event.get("warmup") is True:
+        import weasyprint  # noqa: F401
+        from langchain_aws import ChatBedrock  # noqa: F401
+
+        logger.info("Warmup invocation complete")
+        return Response(statusCode=200, body=json.dumps({"warmed": True})).__dict__
+
     metrics.add_metric(
         name="TotalSummarizationInvocation", unit=MetricUnit.Count, value=1
     )

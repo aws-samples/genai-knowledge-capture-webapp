@@ -16,6 +16,11 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
+import {
+  AwsCustomResource,
+  AwsCustomResourcePolicy,
+  PhysicalResourceId,
+} from "aws-cdk-lib/custom-resources";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { NagSuppressions } from "cdk-nag";
 
@@ -56,6 +61,62 @@ export class LambdaFunctions extends Construct {
         orchestrationLambdaExecutionRole,
         props.documentBucket
       );
+
+    // Warm the orchestration function once per deployment
+    this.warmOrchestrationFunction(this.orchestrationFunction);
+  }
+
+  /**
+   * The first invocation of a newly pushed container image has to fetch the image
+   * layers, which has been observed to exceed API Gateway's 29s integration
+   * timeout and surface in the UI as a failed request. Invoking the function once
+   * at the end of each deployment absorbs that cost before any user request.
+   */
+  private warmOrchestrationFunction(orchestrationFunction: Function): void {
+    const warmer = new AwsCustomResource(this, "OrchestrationWarmup", {
+      onUpdate: {
+        service: "Lambda",
+        action: "invoke",
+        parameters: {
+          FunctionName: orchestrationFunction.functionName,
+          InvocationType: "RequestResponse",
+          Payload: JSON.stringify({ warmup: true }),
+        },
+        // A new physical id on every deployment ensures the warmup runs each time
+        // a new image is deployed, not only on stack creation.
+        physicalResourceId: PhysicalResourceId.of(Date.now().toString()),
+      },
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ["lambda:InvokeFunction"],
+          resources: [orchestrationFunction.functionArn],
+        }),
+      ]),
+      timeout: Duration.minutes(3),
+      installLatestAwsSdk: false,
+    });
+    warmer.node.addDependency(orchestrationFunction);
+
+    NagSuppressions.addResourceSuppressions(
+      warmer,
+      [
+        {
+          id: "AwsSolutions-IAM4",
+          reason: "Managed policy applied by the AwsCustomResource provider",
+        },
+        {
+          id: "AwsSolutions-IAM5",
+          reason:
+            "AwsCustomResource provider requires log permissions on a wildcard resource",
+        },
+        {
+          id: "AwsSolutions-L1",
+          reason: "Runtime managed by the AwsCustomResource L3 construct",
+        },
+      ],
+      true
+    );
   }
 
   private createGetCredentialsLambdaExecutionRole(): Role {
@@ -212,7 +273,11 @@ export class LambdaFunctions extends Construct {
       role: orchestrationLambdaExecutionRole,
       architecture: Architecture.ARM_64,
       timeout: Duration.seconds(60),
-      memorySize: 1024,
+      // Memory drives CPU allocation. Max memory used is ~250 MB, but the cold
+      // start has to import langchain and weasyprint: at 1024 MB the init phase
+      // exceeded Lambda's 10s init limit, so the imports were re-run inside the
+      // first invocation (~22s) and API Gateway's 29s integration timeout fired.
+      memorySize: 3008,
       environment: {
         S3_BUCKET_NAME: documentBucket.bucketName,
         POWERTOOLS_LOG_LEVEL: "DEBUG",

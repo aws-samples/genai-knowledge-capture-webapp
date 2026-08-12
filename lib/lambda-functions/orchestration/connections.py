@@ -1,7 +1,6 @@
 import os
 import boto3
 from aws_lambda_powertools import Logger, Tracer, Metrics
-from langchain_aws import ChatBedrock
 from botocore.client import Config
 
 tracer = Tracer()
@@ -57,6 +56,9 @@ class Connections:
         Returns:
             ChatBedrock instance configured with the specified model.
         """
+        # Imported lazily to keep the Lambda init phase within its 10s limit.
+        from langchain_aws import ChatBedrock
+
         return ChatBedrock(
             client=Connections.bedrock_runtime_client,
             model_id=MODEL_ID_MAPPING[model_name],
