@@ -367,3 +367,24 @@ cdk.out
 !jest.config.js
 node_modules
 cdk.out/*
+
+### Compiled TypeScript output ###
+# The root tsconfig sets "declaration": true with no "outDir", so `tsc` (run by
+# `npm run build`) emits a .js and .d.ts next to every source file. These are
+# build artifacts and must not be committed.
+#
+# The rules are scoped to the directories the root tsconfig actually compiles
+# rather than a blanket *.js, because checked-in sources would otherwise be
+# caught: lib/react-app/public/worklets/audio-processor.js (an AudioWorklet
+# loaded at runtime) and lib/react-app/src/vite-env.d.ts. The root tsconfig
+# excludes lib/react-app, which builds separately via Vite.
+#
+# Add a rule here if new construct subdirectories are introduced.
+/bin/**/*.js
+/bin/**/*.d.ts
+/lib/*.js
+/lib/*.d.ts
+/lib/constructs/**/*.js
+/lib/constructs/**/*.d.ts
+/test/**/*.js
+/test/**/*.d.ts
