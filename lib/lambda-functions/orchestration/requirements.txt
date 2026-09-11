@@ -2,7 +2,7 @@ aws-lambda-powertools[tracer,parser]==3.34.0
 langchain-aws==1.7.0
 langchain-core==1.5.4
 defusedxml==0.7.1
-weasyprint==69.0
+weasyprint==70.0
 markdown>=3.10.3
 boto3>=1.43.0
 dominate==2.9.1
